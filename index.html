@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Scanner HL · Ruptura falsa + retest</title>
 <style>
-:root{--bg:#0d1117;--card:#161b22;--bd:#2a313c;--tx:#e6edf3;--mut:#8b949e;--red:#ef5350;--grn:#26a69a;--amb:#f0b429}
+:root{--bg:#0d1117;--card:#161b22;--bd:#2a313c;--tx:#e6edf3;--mut:#8b949e;--red:#ef5350;--grn:#26a69a;--amb:#f0b429;--hl:#4fd1b8}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;padding:12px;max-width:900px;margin:auto}
 h1{font-size:18px;margin:4px 0 2px}
@@ -13,6 +13,7 @@ h1{font-size:18px;margin:4px 0 2px}
 button,select,input{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;font:inherit}
 button.main{background:var(--red);border-color:var(--red);font-weight:600;color:#fff}
 button:disabled{opacity:.5}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--amb);outline-offset:2px}
 .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 details{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;margin-bottom:10px}
 summary{cursor:pointer;color:var(--mut)}
@@ -27,7 +28,7 @@ summary{cursor:pointer;color:var(--mut)}
 .c{background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--mut);border-radius:10px;padding:10px;margin-bottom:10px}
 .c.sell{border-left-color:var(--red)}.c.prep{border-left-color:var(--amb)}.c.break{border-left-color:var(--grn)}
 .hd{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.hd a{color:var(--tx);font-weight:700;font-size:16px;text-decoration:none}
+.hd b{font-size:16px}
 .tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px}
 .sell .tag{background:var(--red)}.prep .tag{background:var(--amb);color:#000}.break .tag{background:var(--grn)}
 .tl{display:flex;gap:10px;flex-wrap:wrap;color:var(--mut);font-size:12px;margin:6px 0}
@@ -35,10 +36,17 @@ summary{cursor:pointer;color:var(--mut)}
 .m b{color:var(--tx)}
 .plan{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:4px 10px;background:#0d1117;border-radius:8px;padding:8px;margin-top:8px;font-size:13px}
 .plan i{color:var(--mut);font-style:normal}
-.ch{width:100%;height:110px;margin-top:8px;background:#0d1117;border-radius:8px}
-.ch .lv{stroke:var(--amb);stroke-dasharray:4 3;stroke-width:1}
+.act{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.act a.hl{background:var(--hl);color:#04211c;font-weight:700;text-decoration:none;border-radius:8px;padding:9px 12px}
+.act button.cp{padding:8px 10px;font-size:12px}
+.act button.cp.ok{border-color:var(--grn);color:var(--grn)}
+.ch{display:block;width:100%;height:auto;margin-top:8px;background:#0d1117;border-radius:8px}
 .ch .mk{fill:var(--amb);font-size:10px;font-weight:700;text-anchor:middle}
+.ch .pl{font-size:9px}
+.lg{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin-top:4px}
+.lg span::before{content:"";display:inline-block;width:10px;height:0;border-top:2px dashed currentColor;margin-right:4px;vertical-align:middle}
 .empty{color:var(--mut);text-align:center;padding:30px 0}
+.src{color:var(--mut);font-size:11px;margin-top:14px;text-align:center}
 </style>
 </head>
 <body>
@@ -74,6 +82,7 @@ summary{cursor:pointer;color:var(--mut)}
 </div>
 <div id="status">Pulsa Escanear.</div>
 <div id="list"></div>
+<div class="src">Velas: API pública de Hyperliquid (candleSnapshot). Gráfico dibujado en esta página. Hyperliquid no permite precargar la orden: copia los valores y pégalos allí.</div>
 
 <script>
 // ==== CORE START ====
@@ -170,10 +179,17 @@ function analyze(c,cfg){
 // ==== CORE END ====
 
 const $=id=>document.getElementById(id);
-const S={results:[],filter:'all',seen:new Set(),first:true,busy:false,lastScan:0,timer:null,syms:null,symsAt:0,meta:{}};
+const S={results:[],filter:'all',seen:new Set(),first:true,busy:false,lastScan:0,timer:null,syms:null,symsAt:0,meta:{},fail:0};
 const API='https://api.hyperliquid.xyz/info';
 const TFMS={'5m':3e5,'15m':9e5,'1h':36e5,'4h':144e5};
 const N_CANDLES=300;
+
+// ---- Ajustes guardados en el navegador ----
+const SAVE_IDS=['tf','pairs','touches','pivot','age','dist','cap','risk','bear','snd'];
+function saveCfg(){try{const o={};SAVE_IDS.forEach(id=>{const e=$(id);o[id]=e.type==='checkbox'?e.checked:e.value;});localStorage.setItem('hl-ruptura-cfg',JSON.stringify(o));}catch(e){}}
+function loadCfg(){try{const o=JSON.parse(localStorage.getItem('hl-ruptura-cfg')||'{}');SAVE_IDS.forEach(id=>{if(!(id in o))return;const e=$(id);if(e.type==='checkbox')e.checked=!!o[id];else e.value=o[id];});}catch(e){}}
+loadCfg();
+SAVE_IDS.forEach(id=>$(id).addEventListener('change',saveCfg));
 
 function readCfg(){return{tf:$('tf').value,pairs:+$('pairs').value,minTouches:+$('touches').value,pivotK:+$('pivot').value,
   maxAge:+$('age').value||3,maxDist:+$('dist').value||1.5,needBear:$('bear').checked,capital:+$('cap').value||1000,riskPct:+$('risk').value||1};}
@@ -207,14 +223,14 @@ async function scan(){
   const cfg=readCfg();
   try{
     status('Cargando pares…');
-    const syms=await getSymbols(cfg.pairs), out=[], q=[...syms]; let done=0;
+    const syms=await getSymbols(cfg.pairs), out=[], q=[...syms]; let done=0, fail=0;
     const worker=async()=>{
       while(q.length){
         const s=q.shift();
         try{const c=await getKlines(s,cfg.tf);const r=analyze(c,cfg);if(r){r.symbol=s;
           if(r.stage==='sell'){const sz=S.meta[s]?S.meta[s].sz:4,f=Math.pow(10,sz);
             r.sz=sz;r.qty=Math.floor(r.qty*f)/f;r.notional=r.qty*r.entry;r.riskUsd=r.qty*(r.sl-r.entry);}
-          out.push(r);}}catch(e){}
+          out.push(r);}}catch(e){fail++;}
         done++; status(`Escaneando ${done}/${syms.length}…`);
       }
     };
@@ -222,15 +238,16 @@ async function scan(){
     out.sort((a,b)=>a.rank-b.rank||a.age-b.age);
     let fresh=false;
     out.forEach(r=>{ if(r.stage==='sell'){const k=r.symbol+cfg.tf+r.rI; if(!S.seen.has(k)){S.seen.add(k);fresh=true;}} });
-    if(fresh&&!S.first&&$('snd').checked)beep();
-    S.first=false; S.results=out; S.tf=cfg.tf; S.lastScan=Date.now();
+    if(fresh&&!S.first){ if($('snd').checked)beep(); try{navigator.vibrate&&navigator.vibrate(200);}catch(e){} }
+    S.first=false; S.results=out; S.tf=cfg.tf; S.lastScan=Date.now(); S.fail=fail;
     render(); tick();
   }catch(e){status('Error: '+e.message);}
   finally{S.busy=false;$('go').disabled=false;}
 }
 
 function status(t){$('status').textContent=t;}
-function tick(){ if(S.lastScan&&!S.busy){const s=Math.round((Date.now()-S.lastScan)/1000);status(`Último scan ${new Date(S.lastScan).toLocaleTimeString('es-ES')} · hace ${s}s · ${S.tf}`);} }
+function tick(){ if(S.lastScan&&!S.busy){const s=Math.round((Date.now()-S.lastScan)/1000);
+  status(`Último scan ${new Date(S.lastScan).toLocaleTimeString('es-ES')} · hace ${s}s · ${S.tf}`+(S.fail?` · ${S.fail} pares sin datos`:''));} }
 setInterval(tick,1000);
 
 function beep(){try{const a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();
@@ -240,21 +257,30 @@ function fmt(p){return p>=100?p.toFixed(2):p>=1?p.toFixed(4):p>=0.1?p.toFixed(5)
 function tm(t){if(t==null)return '';const d=new Date(t);return d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});}
 
 function chart(r){
-  const W=300,H=110,cs=r.candles,n=cs.length; if(!n)return '';
+  const W=360,H=190,M=56,PW=W-M,cs=r.candles,n=cs.length; if(!n)return '';
+  const sell=r.stage==='sell';
   let hi=r.level,lo=r.level; cs.forEach(x=>{hi=Math.max(hi,x.h);lo=Math.min(lo,x.l);});
-  const pad=(hi-lo)*0.06; hi+=pad; lo-=pad;
-  const y=p=>H-(p-lo)/(hi-lo)*H, st=W/n, bw=Math.max(1.5,st*0.6);
-  let s=`<svg viewBox="0 0 ${W} ${H}" class="ch" preserveAspectRatio="none">`;
-  s+=`<line x1="0" x2="${W}" y1="${y(r.level)}" y2="${y(r.level)}" class="lv"/>`;
+  if(sell){[r.sl,r.tp1].forEach(v=>{hi=Math.max(hi,v);lo=Math.min(lo,v);});}
+  const pad=(hi-lo)*0.05||hi*0.001; hi+=pad; lo-=pad;
+  const y=p=>14+(H-24)*(1-(p-lo)/(hi-lo)), st=PW/n, bw=Math.max(1.5,st*0.6);
+  let s=`<svg viewBox="0 0 ${W} ${H}" class="ch" role="img" aria-label="Velas de ${r.symbol}">`;
+  const ln=(p,col,dash)=>{ if(p<lo||p>hi)return '';
+    return `<line x1="0" x2="${PW}" y1="${y(p)}" y2="${y(p)}" stroke="${col}" stroke-width="1" stroke-dasharray="${dash}"/>`+
+           `<text x="${PW+3}" y="${y(p)+3}" class="pl" fill="${col}">${fmt(p)}</text>`; };
   cs.forEach((x,i)=>{
     const cx=i*st+st/2,col=x.c>=x.o?'#26a69a':'#ef5350',t=y(Math.max(x.o,x.c)),b=y(Math.min(x.o,x.c));
     s+=`<line x1="${cx}" x2="${cx}" y1="${y(x.h)}" y2="${y(x.l)}" stroke="${col}"/>`;
     s+=`<rect x="${cx-bw/2}" y="${t}" width="${bw}" height="${Math.max(1,b-t)}" fill="${col}"/>`;
   });
+  s+=ln(r.level,'#f0b429','4 3');
+  if(sell){ s+=ln(r.entry,'#e6edf3','2 3')+ln(r.sl,'#ef5350','5 3')+ln(r.tp1,'#26a69a','5 3')+ln(r.tp2,'#26a69a','1 3'); }
   [['1',r.bI],['2',r.fI],['3',r.rI]].forEach(([l,i])=>{
-    const k=i-r.base; if(i>=0&&k>=0&&k<n){s+=`<text x="${k*st+st/2}" y="${Math.max(9,y(cs[k].h)-3)}" class="mk">${l}</text>`;}
+    const k=i-r.base; if(i>=0&&k>=0&&k<n){s+=`<text x="${k*st+st/2}" y="${Math.max(10,y(cs[k].h)-3)}" class="mk">${l}</text>`;}
   });
-  return s+'</svg>';
+  s+='</svg>';
+  const lg=sell?'<div class="lg"><span style="color:#f0b429">Resistencia</span><span style="color:#e6edf3">Entrada</span><span style="color:#ef5350">SL</span><span style="color:#26a69a">TP1 / TP2</span></div>'
+               :'<div class="lg"><span style="color:#f0b429">Resistencia</span></div>';
+  return s+lg;
 }
 
 function card(r){
@@ -268,22 +294,39 @@ function card(r){
     <div><b>TP2 3R</b> ${fmt(r.tp2)}</div>
     <div><b>Tamaño</b> ${r.qty.toFixed(r.sz)} ${base} · ${r.notional.toFixed(0)} $</div>
     <div><b>Riesgo</b> ${r.riskUsd.toFixed(2)} $</div></div>`:'';
+  const cp=(lbl,v)=>`<button class="cp" data-v="${v}">${lbl}</button>`;
+  const act=`<div class="act"><a class="hl" href="https://app.hyperliquid.xyz/trade/${encodeURIComponent(r.symbol)}" target="_blank" rel="noopener">Abrir en Hyperliquid</a>`+
+    (r.stage==='sell'?cp('Copiar entrada',fmt(r.entry))+cp('Copiar SL',fmt(r.sl))+cp('Copiar TP1',fmt(r.tp1))+cp('Copiar TP2',fmt(r.tp2))+cp('Copiar tamaño',r.qty.toFixed(r.sz)):'')+`</div>`;
   return `<div class="c ${r.stage}">
-    <div class="hd"><a href="https://app.hyperliquid.xyz/trade/${r.symbol}" target="_blank" rel="noopener">${base}-PERP</a><span class="tag">${tag}</span></div>
+    <div class="hd"><b>${base}-PERP</b><span class="tag">${tag}</span></div>
     <div class="tl">${tl}</div>
     <div class="m"><span>Resistencia <b>${fmt(r.level)}</b></span><span>Toques <b>${r.touches}</b></span>
       <span>Precio <b>${fmt(r.close)}</b></span><span>Dist. <b>${Math.abs(r.dist).toFixed(2)} ATR</b></span>
       <span>Hace <b>${r.age}</b> velas</span>${r.volRatio?`<span>Vol retest <b>${r.volRatio.toFixed(1)}x</b></span>`:''}</div>
-    ${plan}${chart(r)}</div>`;
+    ${plan}${act}${chart(r)}</div>`;
 }
 
 function render(){
   const cnt={sell:0,prep:0,break:0}; S.results.forEach(r=>cnt[r.stage]++);
   $('n-all').textContent=S.results.length; $('n-sell').textContent=cnt.sell; $('n-prep').textContent=cnt.prep; $('n-break').textContent=cnt.break;
+  document.title=(cnt.sell?`(${cnt.sell}) `:'')+'Scanner HL · Ruptura';
   document.querySelectorAll('.stat').forEach(e=>e.classList.toggle('on',e.dataset.f===S.filter));
   const rows=S.results.filter(r=>S.filter==='all'||r.stage===S.filter);
   $('list').innerHTML=rows.length?rows.map(card).join(''):'<div class="empty">Sin setups ahora mismo en este filtro.</div>';
 }
+
+function copyText(t){
+  if(navigator.clipboard&&window.isSecureContext)return navigator.clipboard.writeText(t);
+  return new Promise((ok,ko)=>{const a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';
+    document.body.appendChild(a);a.select();try{document.execCommand('copy')?ok():ko();}catch(e){ko(e);}a.remove();});
+}
+$('list').addEventListener('click',e=>{
+  const b=e.target.closest('button.cp'); if(!b)return;
+  const old=b.textContent;
+  copyText(b.dataset.v).then(()=>{b.classList.add('ok');b.textContent='Copiado '+b.dataset.v;})
+    .catch(()=>{b.textContent='No se pudo copiar';})
+    .finally(()=>setTimeout(()=>{b.classList.remove('ok');b.textContent=old;},1500));
+});
 
 document.querySelectorAll('.stat').forEach(e=>e.onclick=()=>{S.filter=e.dataset.f;render();});
 $('go').onclick=scan;
