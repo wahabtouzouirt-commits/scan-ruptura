@@ -377,7 +377,7 @@ function card(r){
     <div class="m"><span>Resistencia <b>${fmt(r.level)}</b></span><span>Toques <b>${r.touches}</b></span>
       <span>Precio <b>${fmt(r.close)}</b></span><span>Dist. <b>${Math.abs(r.dist).toFixed(2)} ATR</b></span>
       <span>Hace <b>${r.age}</b> velas</span></div>${vol}
-    ${sell?plan:''}${act}${chart(r)}</div>`;
+    ${sell?plan+hist():''}${act}${chart(r)}</div>`;
 }
 
 function render(){
@@ -406,6 +406,12 @@ document.querySelectorAll('.stat').forEach(e=>e.onclick=()=>{S.filter=e.dataset.
 
 // ================= BACKTEST =================
 const yieldUI=()=>new Promise(r=>setTimeout(r,0));
+try{S.bt=JSON.parse(localStorage.getItem('hl-bt-last')||'null');}catch(e){S.bt=null;}
+function hist(){
+  const b=S.bt; if(!b||b.tf!==S.tf||!b.n)return '';
+  const f=v=>(v>=0?'+':'')+v.toFixed(2);
+  return `<div class="m" style="margin-top:6px"><span>Histórico con tus filtros (${b.n} señales, ${b.days} días): <b class="${b.eB>0?'pos':'neg'}">${f(b.eB)}R</b> por operación a TP2 · llegan a TP2 <b>${b.wB.toFixed(0)}%</b></span></div>`;
+}
 
 async function btSymbol(s,cfg,base,N,hold,fee){
   const now=Date.now(), tfms=TFMS[cfg.tf];
@@ -479,7 +485,14 @@ function renderBT(sigs,cfg,N,fail){
   const pass=sigs.filter(g=>btPass(g,cfg)), rej=sigs.filter(g=>!btPass(g,cfg));
   const seg=(title,items)=>`<tr class="sec"><td colspan="7">${title}</td></tr>`+items.map(([l,fn])=>btRow(l,sigs.filter(fn))).join('');
   let h=`<div class="c"><div class="hd"><b>Backtest · ${cfg.tf} · ${Math.round(N*TFMS[cfg.tf]/864e5)} días · ${cfg.pairs} pares</b></div>`;
-  if(sigs.length<30) h+=`<div class="m" style="margin-top:6px;color:var(--amb)">Solo ${sigs.length} señales: es muy poco para concluir nada. Prueba con más historial o más pares.</div>`;
+  const t=btStats(pass), f2=v=>(v>=0?'+':'')+v.toFixed(2), days=Math.round(N*TFMS[cfg.tf]/864e5);
+  let vd,vc;
+  if(t.n<30){vd=`Solo ${t.n} señales con tus filtros: son pocas para decidir. Prueba con más historial.`;vc='var(--amb)';}
+  else if(t.eB>0.1&&t.eA>=0){vd=`Con tus filtros ha ganado dinero en estos ${days} días: ${f2(t.eB)}R por operación si dejas correr hasta TP2. Buena señal, pero repítelo con más historial antes de fiarte.`;vc='var(--grn)';}
+  else if(t.eB>0){vd=`Gana muy poco (${f2(t.eB)}R por operación a TP2). Las comisiones o un mal fill pueden borrarlo.`;vc='var(--amb)';}
+  else{vd=`Con tus filtros ha perdido dinero (${f2(t.eB)}R por operación a TP2). No la operes con dinero real.`;vc='var(--red)';}
+  h+=`<div class="m" style="margin-top:8px;color:${vc};font-size:13px"><b>${vd}</b></div><div class="note">Un backtest es probar la estrategia con el pasado: cuenta cuántas veces habría saltado una señal y si habría llegado antes al objetivo o al stop. "R" es tu riesgo: +1R = ganas lo que arriesgabas.</div>`;
+  if(t.n){S.bt={tf:cfg.tf,n:t.n,wA:t.wA,eA:t.eA,wB:t.wB,eB:t.eB,days};try{localStorage.setItem('hl-bt-last',JSON.stringify(S.bt));}catch(e){}}
   h+=`<div class="wrap"><table class="tbl"><tr><th></th><th>Nº</th><th>Gana TP1</th><th>Esp. R TP1</th><th>Gana TP2</th><th>Esp. R TP2</th><th>Total R TP1</th></tr>`;
   h+=btRow('Todas (sin filtros de contexto)',sigs)+btRow('Con tus filtros actuales',pass)+btRow('Rechazadas por filtros',rej);
   h+=seg('Volumen del retest ③',[['menos de 0.8x',g=>g.volRetest!=null&&g.volRetest<0.8],['0.8x a 1.5x',g=>g.volRetest!=null&&g.volRetest>=0.8&&g.volRetest<=1.5],['más de 1.5x',g=>g.volRetest!=null&&g.volRetest>1.5]]);
@@ -489,7 +502,7 @@ function renderBT(sigs,cfg,N,fail){
   h+=seg('Horario (local)',[['00:00-07:59',g=>g.hour<8],['08:00-23:59',g=>g.hour>=8],['fin de semana',g=>g.dow===0||g.dow===6]]);
   h+=seg('Toques de la resistencia',[['2 toques',g=>g.touches===2],['3 o más',g=>g.touches>=3]]);
   h+=`</table></div><div class="note">Esp. R = ganancia media por operación en múltiplos del riesgo (positivo = gana dinero tras comisiones). TP1 = cierras todo en 1.5R; TP2 = en 3R. Entrada al cierre de la vela de señal; si SL y TP caen en la misma vela cuenta como SL; si no resuelve en ${$('hold').value} velas se cierra a mercado. Comisión ${$('fee').value}% ida+vuelta. Las señales de varios pares coinciden en el tiempo (el mercado se mueve a la vez), así que cuenta más el total que cada par.${fail?` ${fail} pares sin datos.`:''}</div></div>`;
-  $('btout').innerHTML=h;
+  $('btout').innerHTML=h; render();
 }
 
 async function backtest(){
