@@ -48,6 +48,7 @@ summary{cursor:pointer;color:var(--mut)}
 .lg span::before{content:"";display:inline-block;width:10px;height:0;border-top:2px dashed currentColor;margin-right:4px;vertical-align:middle}
 .empty{color:var(--mut);text-align:center;padding:30px 0}
 .src{color:var(--mut);font-size:11px;margin-top:14px;text-align:center}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}.tbl th,.tbl td{padding:6px 4px;text-align:right;border-bottom:1px solid var(--bd)}.tbl th:first-child,.tbl td:first-child{text-align:left}.tbl th{color:var(--mut);font-weight:600}.tbl tr.sec td{color:var(--amb);font-weight:700;text-align:left;padding-top:12px}.pos{color:var(--grn)}.neg{color:var(--red)}.wrap{overflow-x:auto}.note{color:var(--mut);font-size:11px;margin-top:8px}
 </style>
 </head>
 <body>
@@ -56,6 +57,7 @@ summary{cursor:pointer;color:var(--mut)}
 
 <div class="bar">
   <button class="main" id="go">Escanear</button>
+  <button id="btgo">Backtest</button>
   <label><input type="checkbox" id="auto"> Auto 90 s</label>
   <label><input type="checkbox" id="snd" checked> Sonido</label>
 </div>
@@ -82,6 +84,10 @@ summary{cursor:pointer;color:var(--mut)}
     <label>Desde (hora local)<input type="number" id="sh0" value="0" min="0" max="23"></label>
     <label>Hasta (hora local)<input type="number" id="sh1" value="7" min="0" max="24"></label>
     <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="nowknd"> Evitar fines de semana</label>
+    <h3>Backtest</h3>
+    <label>Historial<select id="btn"><option value="1000">1000 velas</option><option value="2000" selected>2000 velas</option><option value="4000">4000 velas</option></select></label>
+    <label>Comisión ida+vuelta (%)<input type="number" id="fee" value="0.09" step="0.01" min="0"></label>
+    <label>Cerrar si no resuelve en (velas)<input type="number" id="hold" value="100" min="5"></label>
   </div>
 </details>
 
@@ -92,6 +98,7 @@ summary{cursor:pointer;color:var(--mut)}
   <div class="stat" data-f="break"><b id="n-break" style="color:var(--grn)">0</b><span>ROMPIÓ</span></div>
 </div>
 <div id="status">Pulsa Escanear.</div>
+<div id="btout"></div>
 <div id="list"></div>
 <div class="src">Velas: API pública de Hyperliquid (candleSnapshot). Gráfico dibujado en esta página. Hyperliquid no permite precargar la orden: copia los valores y pégalos allí.</div>
 
@@ -211,7 +218,7 @@ const TFMS={'5m':3e5,'15m':9e5,'1h':36e5,'4h':144e5};
 const N_CANDLES=300;
 
 // ---- Ajustes guardados en el navegador ----
-const SAVE_IDS=['tf','pairs','touches','pivot','age','dist','cap','risk','slbuf','minfall','maxret','bear','snd','daymax','ema50','sesson','sh0','sh1','nowknd'];
+const SAVE_IDS=['tf','pairs','touches','pivot','age','dist','cap','risk','slbuf','minfall','maxret','bear','snd','daymax','ema50','sesson','sh0','sh1','nowknd','btn','fee','hold'];
 function saveCfg(){try{const o={};SAVE_IDS.forEach(id=>{const e=$(id);o[id]=e.type==='checkbox'?e.checked:e.value;});localStorage.setItem('hl-ruptura-cfg',JSON.stringify(o));}catch(e){}}
 function loadCfg(){try{const o=JSON.parse(localStorage.getItem('hl-ruptura-cfg')||'{}');SAVE_IDS.forEach(id=>{if(!(id in o))return;const e=$(id);if(e.type==='checkbox')e.checked=!!o[id];else e.value=o[id];});}catch(e){}}
 loadCfg();
@@ -394,6 +401,115 @@ $('list').addEventListener('click',e=>{
 });
 
 document.querySelectorAll('.stat').forEach(e=>e.onclick=()=>{S.filter=e.dataset.f;render();});
+
+// ================= BACKTEST =================
+const yieldUI=()=>new Promise(r=>setTimeout(r,0));
+
+async function btSymbol(s,cfg,base,N,hold,fee){
+  const now=Date.now(), tfms=TFMS[cfg.tf];
+  const k=await post({type:'candleSnapshot',req:{coin:s,interval:cfg.tf,startTime:now-(N+300)*tfms,endTime:now}});
+  const c=k.filter(x=>x.T<=now).map(x=>({t:x.t,o:+x.o,h:+x.h,l:+x.l,c:+x.c,v:+x.v}));
+  const days=Math.min(400,Math.ceil(N*tfms/864e5)+120);
+  const dk=await post({type:'candleSnapshot',req:{coin:s,interval:'1d',startTime:now-days*864e5,endTime:now}});
+  const dm={}; let sum=0,e=null; const kk=2/51;
+  dk.forEach((x,i)=>{ const o=+x.o,cl=+x.c; dm[x.t]={o,ema:e};
+    if(i<50){sum+=cl; if(i===49)e=sum/50;} else e=cl*kk+e*(1-kk); });
+  const out=[], seen=new Set(); let busy=-1;
+  for(let i=299;i<c.length-1;i++){
+    if(i%150===0) await yieldUI();
+    if(i<=busy) continue;
+    const r=analyze(c.slice(i-299,i+1),base);
+    if(!r||r.stage!=='sell') continue;
+    const rAbs=i-299+r.rI; if(seen.has(rAbs)) continue; seen.add(rAbs);
+    const entry=r.entry, sl=r.sl, tp1=r.tp1, tp2=r.tp2, risk=sl-entry;
+    const end=Math.min(i+hold,c.length-1);
+    let sI=-1,t1=-1,t2=-1;
+    for(let j=i+1;j<=end;j++){
+      const x=c[j];
+      if(sI<0&&x.h>=sl)sI=j; if(t1<0&&x.l<=tp1)t1=j; if(t2<0&&x.l<=tp2)t2=j;
+      if((sI>=0||t1>=0)&&(sI>=0||t2>=0))break;
+    }
+    const res=(hit,R)=>{ if(sI>=0&&(hit<0||sI<=hit))return{r:-1,at:sI}; if(hit>=0)return{r:R,at:hit}; return null; };
+    let a=res(t1,1.5), b=res(t2,3);
+    if(!a||!b){
+      if(end<i+hold) continue; // sin datos suficientes: operación aún abierta
+      const tmo=(entry-c[end].c)/risk;
+      a=a||{r:tmo,at:end}; b=b||{r:tmo,at:end};
+    }
+    busy=Math.max(a.at,b.at);
+    const feeR=fee/(risk/entry*100);
+    const day=dm[Math.floor(c[i].t/864e5)*864e5];
+    const d=new Date(r.rT);
+    out.push({s,t:c[i].t,rA:a.r-feeR,rB:b.r-feeR,volFall:r.volFall,volRetest:r.volRetest,touches:r.touches,
+      dayChg:day?(entry/day.o-1)*100:null, above:(day&&day.ema!=null)?entry>day.ema:null, hour:d.getHours(), dow:d.getDay()});
+  }
+  return out;
+}
+
+function btPass(g,cfg){
+  if(cfg.minFall>0&&g.volFall!=null&&g.volFall<cfg.minFall)return false;
+  if(cfg.maxRet>0&&g.volRetest!=null&&g.volRetest>cfg.maxRet)return false;
+  if(cfg.dayMax>0&&g.dayChg!=null&&g.dayChg>=cfg.dayMax)return false;
+  if(cfg.ema50&&g.above===true)return false;
+  if(cfg.sessOn){
+    const h=g.hour, inWin=cfg.sH1>cfg.sH0?(h>=cfg.sH0&&h<cfg.sH1):(h>=cfg.sH0||h<cfg.sH1);
+    if(inWin)return false;
+    if(cfg.noWknd&&(g.dow===0||g.dow===6))return false;
+  }
+  return true;
+}
+
+function btStats(a){
+  const n=a.length; if(!n)return{n:0};
+  const sA=a.reduce((x,g)=>x+g.rA,0), sB=a.reduce((x,g)=>x+g.rB,0);
+  return{n,wA:a.filter(g=>g.rA>0).length/n*100,eA:sA/n,wB:a.filter(g=>g.rB>0).length/n*100,eB:sB/n,tA:sA,tB:sB};
+}
+
+function btRow(label,a){
+  const t=btStats(a); if(!t.n)return `<tr><td>${label}</td><td>0</td><td colspan="5">–</td></tr>`;
+  const c=v=>v>0?'pos':v<0?'neg':'';
+  const f=v=>(v>=0?'+':'')+v.toFixed(2);
+  return `<tr><td>${label}</td><td>${t.n}</td><td>${t.wA.toFixed(0)}%</td><td class="${c(t.eA)}">${f(t.eA)}</td><td>${t.wB.toFixed(0)}%</td><td class="${c(t.eB)}">${f(t.eB)}</td><td class="${c(t.tA)}">${f(t.tA)}</td></tr>`;
+}
+
+function renderBT(sigs,cfg,N,fail){
+  const pass=sigs.filter(g=>btPass(g,cfg)), rej=sigs.filter(g=>!btPass(g,cfg));
+  const seg=(title,items)=>`<tr class="sec"><td colspan="7">${title}</td></tr>`+items.map(([l,fn])=>btRow(l,sigs.filter(fn))).join('');
+  let h=`<div class="c"><div class="hd"><b>Backtest · ${cfg.tf} · ${Math.round(N*TFMS[cfg.tf]/864e5)} días · ${cfg.pairs} pares</b></div>`;
+  if(sigs.length<30) h+=`<div class="m" style="margin-top:6px;color:var(--amb)">Solo ${sigs.length} señales: es muy poco para concluir nada. Prueba con más historial o más pares.</div>`;
+  h+=`<div class="wrap"><table class="tbl"><tr><th></th><th>Nº</th><th>Gana TP1</th><th>Esp. R TP1</th><th>Gana TP2</th><th>Esp. R TP2</th><th>Total R TP1</th></tr>`;
+  h+=btRow('Todas (sin filtros de contexto)',sigs)+btRow('Con tus filtros actuales',pass)+btRow('Rechazadas por filtros',rej);
+  h+=seg('Volumen del retest ③',[['menos de 0.8x',g=>g.volRetest!=null&&g.volRetest<0.8],['0.8x a 1.5x',g=>g.volRetest!=null&&g.volRetest>=0.8&&g.volRetest<=1.5],['más de 1.5x',g=>g.volRetest!=null&&g.volRetest>1.5]]);
+  h+=seg('Volumen de la caída ②',[['menos de 1x',g=>g.volFall!=null&&g.volFall<1],['1x o más',g=>g.volFall!=null&&g.volFall>=1]]);
+  h+=seg('Diario en el momento',[['sube 3% o más',g=>g.dayChg!=null&&g.dayChg>=3],['menos de +3%',g=>g.dayChg!=null&&g.dayChg<3]]);
+  h+=seg('EMA50 diaria',[['precio sobre la EMA50',g=>g.above===true],['precio bajo la EMA50',g=>g.above===false]]);
+  h+=seg('Horario (local)',[['00:00-07:59',g=>g.hour<8],['08:00-23:59',g=>g.hour>=8],['fin de semana',g=>g.dow===0||g.dow===6]]);
+  h+=seg('Toques de la resistencia',[['2 toques',g=>g.touches===2],['3 o más',g=>g.touches>=3]]);
+  h+=`</table></div><div class="note">Esp. R = ganancia media por operación en múltiplos del riesgo (positivo = gana dinero tras comisiones). TP1 = cierras todo en 1.5R; TP2 = en 3R. Entrada al cierre de la vela de señal; si SL y TP caen en la misma vela cuenta como SL; si no resuelve en ${$('hold').value} velas se cierra a mercado. Comisión ${$('fee').value}% ida+vuelta. Las señales de varios pares coinciden en el tiempo (el mercado se mueve a la vez), así que cuenta más el total que cada par.${fail?` ${fail} pares sin datos.`:''}</div></div>`;
+  $('btout').innerHTML=h;
+}
+
+async function backtest(){
+  if(S.busy)return; S.busy=true; $('go').disabled=true; $('btgo').disabled=true; $('btout').innerHTML='';
+  const cfg=readCfg(), N=+$('btn').value||2000, fee=num('fee',0.09), hold=Math.max(5,Math.floor(num('hold',100)));
+  const base=Object.assign({},cfg,{minFall:0,maxRet:0});
+  const sigs=[]; let done=0, fail=0;
+  try{
+    const syms=await getSymbols(cfg.pairs), q=[...syms];
+    const worker=async()=>{
+      while(q.length){
+        const s=q.shift();
+        try{sigs.push(...await btSymbol(s,cfg,base,N,hold,fee));}catch(e){fail++;}
+        done++; status(`Backtest ${done}/${syms.length} · ${sigs.length} señales…`);
+      }
+    };
+    await Promise.all(Array.from({length:3},worker));
+    renderBT(sigs,cfg,N,fail); status(`Backtest terminado · ${sigs.length} señales analizadas`);
+  }catch(e){status('Error: '+e.message);}
+  finally{S.busy=false;$('go').disabled=false;$('btgo').disabled=false;}
+}
+$('btgo').onclick=backtest;
+
 $('go').onclick=scan;
 $('auto').onchange=e=>{clearInterval(S.timer); if(e.target.checked){scan();S.timer=setInterval(scan,90000);}};
 </script>
