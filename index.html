@@ -76,10 +76,11 @@ summary{cursor:pointer;color:var(--mut)}
     <label>Colchón del SL sobre la resistencia (× ATR)<input type="number" id="slbuf" value="0.5" step="0.1" min="0"></label>
     <label>Vol. mínimo de la caída ② (× media)<input type="number" id="minfall" value="1" step="0.1" min="0"></label>
     <label>Vol. máximo del retest ③ (× media, 0 = sin límite)<input type="number" id="maxret" value="0" step="0.1" min="0"></label>
+    <label>Vol. mínimo del retest ③ (× media, 0 = sin límite)<input type="number" id="minret" value="0.8" step="0.1" min="0"></label>
     <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="bear" checked> Exigir vela de retest bajista</label>
     <h3>Filtros de contexto (si fallan, la señal pasa de VENDER a VIGILAR)</h3>
-    <label>No vender si el diario sube más de (%, 0 = off)<input type="number" id="daymax" value="3" step="0.5" min="0"></label>
-    <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="ema50" checked> Exigir precio bajo la EMA50 diaria</label>
+    <label>No vender si el diario sube más de (%, 0 = off)<input type="number" id="daymax" value="0" step="0.5" min="0"></label>
+    <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="ema50"> Exigir precio bajo la EMA50 diaria</label>
     <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="sesson" checked> Evitar horas de baja liquidez</label>
     <label>Desde (hora local)<input type="number" id="sh0" value="0" min="0" max="23"></label>
     <label>Hasta (hora local)<input type="number" id="sh1" value="7" min="0" max="24"></label>
@@ -202,6 +203,7 @@ function analyze(c,cfg){
     let why='';
     if(cfg.minFall>0&&best.volFall!=null&&best.volFall<cfg.minFall) why='la caída ② no tuvo volumen';
     else if(cfg.maxRet>0&&best.volRetest!=null&&best.volRetest>cfg.maxRet) why='el retest ③ tuvo demasiado volumen';
+    else if(cfg.minRet>0&&best.volRetest!=null&&best.volRetest<cfg.minRet) why='el retest ③ tuvo poco volumen';
     if(why){best.stage='prep';best.rank=1;best.weak=true;best.weakWhy=why;}
   }
   const m=Math.min(70,c.length);
@@ -218,16 +220,16 @@ const TFMS={'5m':3e5,'15m':9e5,'1h':36e5,'4h':144e5};
 const N_CANDLES=300;
 
 // ---- Ajustes guardados en el navegador ----
-const SAVE_IDS=['tf','pairs','touches','pivot','age','dist','cap','risk','slbuf','minfall','maxret','bear','snd','daymax','ema50','sesson','sh0','sh1','nowknd','btn','fee','hold'];
-function saveCfg(){try{const o={};SAVE_IDS.forEach(id=>{const e=$(id);o[id]=e.type==='checkbox'?e.checked:e.value;});localStorage.setItem('hl-ruptura-cfg',JSON.stringify(o));}catch(e){}}
-function loadCfg(){try{const o=JSON.parse(localStorage.getItem('hl-ruptura-cfg')||'{}');SAVE_IDS.forEach(id=>{if(!(id in o))return;const e=$(id);if(e.type==='checkbox')e.checked=!!o[id];else e.value=o[id];});}catch(e){}}
+const SAVE_IDS=['tf','pairs','touches','pivot','age','dist','cap','risk','slbuf','minfall','maxret','bear','snd','daymax','ema50','sesson','sh0','sh1','nowknd','btn','fee','hold','minret'];
+function saveCfg(){try{const o={};SAVE_IDS.forEach(id=>{const e=$(id);o[id]=e.type==='checkbox'?e.checked:e.value;});localStorage.setItem('hl-ruptura-cfg2',JSON.stringify(o));}catch(e){}}
+function loadCfg(){try{const o=JSON.parse(localStorage.getItem('hl-ruptura-cfg2')||'{}');SAVE_IDS.forEach(id=>{if(!(id in o))return;const e=$(id);if(e.type==='checkbox')e.checked=!!o[id];else e.value=o[id];});}catch(e){}}
 loadCfg();
 SAVE_IDS.forEach(id=>$(id).addEventListener('change',saveCfg));
 
 function num(id,def){const v=parseFloat($(id).value);return isNaN(v)?def:v;}
 function readCfg(){return{tf:$('tf').value,pairs:+$('pairs').value,minTouches:+$('touches').value,pivotK:+$('pivot').value,
   maxAge:+$('age').value||3,maxDist:+$('dist').value||1.5,needBear:$('bear').checked,capital:+$('cap').value||1000,riskPct:+$('risk').value||1,
-  slBuf:num('slbuf',0.5),minFall:+$('minfall').value||0,maxRet:+$('maxret').value||0,
+  slBuf:num('slbuf',0.5),minFall:+$('minfall').value||0,maxRet:+$('maxret').value||0,minRet:num('minret',0),
   dayMax:num('daymax',0),ema50:$('ema50').checked,sessOn:$('sesson').checked,sH0:num('sh0',0),sH1:num('sh1',7),noWknd:$('nowknd').checked};}
 
 async function post(body,retry=2){
@@ -449,6 +451,7 @@ async function btSymbol(s,cfg,base,N,hold,fee){
 function btPass(g,cfg){
   if(cfg.minFall>0&&g.volFall!=null&&g.volFall<cfg.minFall)return false;
   if(cfg.maxRet>0&&g.volRetest!=null&&g.volRetest>cfg.maxRet)return false;
+  if(cfg.minRet>0&&g.volRetest!=null&&g.volRetest<cfg.minRet)return false;
   if(cfg.dayMax>0&&g.dayChg!=null&&g.dayChg>=cfg.dayMax)return false;
   if(cfg.ema50&&g.above===true)return false;
   if(cfg.sessOn){
@@ -492,7 +495,7 @@ function renderBT(sigs,cfg,N,fail){
 async function backtest(){
   if(S.busy)return; S.busy=true; $('go').disabled=true; $('btgo').disabled=true; $('btout').innerHTML='';
   const cfg=readCfg(), N=+$('btn').value||2000, fee=num('fee',0.09), hold=Math.max(5,Math.floor(num('hold',100)));
-  const base=Object.assign({},cfg,{minFall:0,maxRet:0});
+  const base=Object.assign({},cfg,{minFall:0,maxRet:0,minRet:0});
   const sigs=[]; let done=0, fail=0;
   try{
     const syms=await getSymbols(cfg.pairs), q=[...syms];
