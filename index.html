@@ -275,7 +275,7 @@ async function applyFilters(r,s,cfg){
           if(e!=null&&today.c>e) why='precio sobre la EMA50 diaria';
         }
       }
-    }catch(e){}
+    }catch(e){ if(!why) why='no se pudo leer el diario (reescanea)'; }
   }
   if(why){r.stage='prep';r.rank=1;r.weak=true;r.weakWhy=why;}
 }
