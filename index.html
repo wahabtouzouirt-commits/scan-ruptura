@@ -1,533 +1,348 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Scanner HL · Ruptura falsa + retest</title>
 <style>
 :root{--bg:#0d1117;--card:#161b22;--bd:#2a313c;--tx:#e6edf3;--mut:#8b949e;--red:#ef5350;--grn:#26a69a;--amb:#f0b429;--hl:#4fd1b8}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;padding:12px;max-width:900px;margin:auto}
-h1{font-size:18px;margin:4px 0 2px}
-.sub{color:var(--mut);font-size:12px;margin-bottom:10px}
+body{margin:auto;background:var(--bg);color:var(--tx);font:14px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;padding:12px;max-width:900px}
+h1{font-size:18px;margin:4px 0 2px}.sub{color:var(--mut);font-size:12px;margin-bottom:10px}
 button,select,input{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;font:inherit}
-button.main{background:var(--red);border-color:var(--red);font-weight:600;color:#fff}
-button:disabled{opacity:.5}
+button.main{background:var(--red);border-color:var(--red);font-weight:600;color:#fff}button:disabled{opacity:.5}
 button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--amb);outline-offset:2px}
 .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-details{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;margin-bottom:10px}
-summary{cursor:pointer;color:var(--mut)}
+details{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;margin-bottom:10px}summary{cursor:pointer;color:var(--mut)}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:8px}
 .grid label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mut)}
 .grid h3{grid-column:1/-1;margin:8px 0 0;font-size:12px;color:var(--amb)}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
-.stat{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px;text-align:center;cursor:pointer}
-.stat.on{border-color:var(--amb)}
-.stat b{display:block;font-size:20px}
-.stat span{font-size:11px;color:var(--mut)}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:6px 2px;text-align:center;cursor:pointer}
+.stat.on{border-color:var(--amb)}.stat b{display:block;font-size:18px}.stat span{font-size:10px;color:var(--mut)}
 #status{color:var(--mut);font-size:12px;margin-bottom:8px}
 .c{background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--mut);border-radius:10px;padding:10px;margin-bottom:10px}
-.c.sell{border-left-color:var(--red)}.c.prep{border-left-color:var(--amb)}.c.break{border-left-color:var(--grn)}
-.hd{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.hd b{font-size:16px}
+.c.sell{border-left-color:var(--red)}.c.prep{border-left-color:var(--amb)}.c.break{border-left-color:var(--grn)}.c.filt{border-left-color:#6e7681}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:8px}.hd b{font-size:16px}
 .tag{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px}
-.sell .tag{background:var(--red)}.prep .tag{background:var(--amb);color:#000}.break .tag{background:var(--grn)}
+.sell .tag{background:var(--red)}.prep .tag{background:var(--amb);color:#000}.break .tag{background:var(--grn)}.filt .tag{background:#6e7681}
 .tl{display:flex;gap:10px;flex-wrap:wrap;color:var(--mut);font-size:12px;margin:6px 0}
-.m{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mut)}
-.m b{color:var(--tx)}
+.m{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mut)}.m b{color:var(--tx)}
 .plan{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:4px 10px;background:#0d1117;border-radius:8px;padding:8px;margin-top:8px;font-size:13px}
 .plan i{color:var(--mut);font-style:normal}
 .act{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .act a.hl{background:var(--hl);color:#04211c;font-weight:700;text-decoration:none;border-radius:8px;padding:9px 12px}
-.act button.cp{padding:8px 10px;font-size:12px}
-.act button.cp.ok{border-color:var(--grn);color:var(--grn)}
+.act button.cp{padding:8px 10px;font-size:12px}.act button.cp.ok{border-color:var(--grn);color:var(--grn)}
 .ch{display:block;width:100%;height:auto;margin-top:8px;background:#0d1117;border-radius:8px}
-.ch .mk{fill:var(--amb);font-size:10px;font-weight:700;text-anchor:middle}
-.ch .pl{font-size:9px}
+.ch .mk{fill:var(--amb);font-size:10px;font-weight:700;text-anchor:middle}.ch .pl{font-size:9px}
 .lg{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin-top:4px}
-.lg span::before{content:"";display:inline-block;width:10px;height:0;border-top:2px dashed currentColor;margin-right:4px;vertical-align:middle}
-.empty{color:var(--mut);text-align:center;padding:30px 0}
-.src{color:var(--mut);font-size:11px;margin-top:14px;text-align:center}
-.tbl{width:100%;border-collapse:collapse;font-size:12px}.tbl th,.tbl td{padding:6px 4px;text-align:right;border-bottom:1px solid var(--bd)}.tbl th:first-child,.tbl td:first-child{text-align:left}.tbl th{color:var(--mut);font-weight:600}.tbl tr.sec td{color:var(--amb);font-weight:700;text-align:left;padding-top:12px}.pos{color:var(--grn)}.neg{color:var(--red)}.wrap{overflow-x:auto}.note{color:var(--mut);font-size:11px;margin-top:8px}
-</style>
-</head>
-<body>
+.lg span::before{content:"";display:inline-block;width:10px;border-top:2px dashed currentColor;margin-right:4px;vertical-align:middle}
+.empty{color:var(--mut);text-align:center;padding:30px 0}.src{color:var(--mut);font-size:11px;margin-top:14px;text-align:center}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}.tbl th,.tbl td{padding:6px 4px;text-align:right;border-bottom:1px solid var(--bd)}
+.tbl th:first-child,.tbl td:first-child{text-align:left}.tbl th{color:var(--mut);font-weight:600}
+.tbl tr.sec td{color:var(--amb);font-weight:700;text-align:left;padding-top:12px}
+.pos{color:var(--grn)}.neg{color:var(--red)}.wrap{overflow-x:auto}.note{color:var(--mut);font-size:11px;margin-top:8px}
+</style></head><body>
 <h1>Ruptura falsa + retest · CORTO en Hyperliquid</h1>
-<div class="sub">① Supera la resistencia → ② cae por debajo → ③ vuelve a tocarla y es rechazada. Solo velas cerradas. Datos y pares: perpetuos de Hyperliquid.</div>
-
-<div class="bar">
-  <button class="main" id="go">Escanear</button>
-  <button id="btgo">Backtest</button>
-  <label><input type="checkbox" id="auto"> Auto 90 s</label>
-  <label><input type="checkbox" id="snd" checked> Sonido</label>
-</div>
-
-<details>
-  <summary>Ajustes</summary>
-  <div class="grid">
-    <label>Temporalidad<select id="tf"><option>5m</option><option selected>15m</option><option>1h</option><option>4h</option></select></label>
-    <label>Perps (por volumen 24h)<select id="pairs"><option>20</option><option selected>30</option><option>40</option></select></label>
-    <label>Toques mínimos resistencia<select id="touches"><option>1</option><option selected>2</option><option>3</option></select></label>
-    <label>Pivote (velas a cada lado)<select id="pivot"><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label>
-    <label>Antigüedad máx. del retest (velas)<input type="number" id="age" value="3" min="1" max="10"></label>
-    <label>Distancia máx. a resistencia (ATR)<input type="number" id="dist" value="1.5" step="0.1" min="0.3"></label>
-    <label>Capital ($)<input type="number" id="cap" value="1000" min="1"></label>
-    <label>Riesgo por operación (%)<input type="number" id="risk" value="1" step="0.1" min="0.1"></label>
-    <label>Colchón del SL sobre la resistencia (× ATR)<input type="number" id="slbuf" value="0.5" step="0.1" min="0"></label>
-    <label>Vol. mínimo de la caída ② (× media)<input type="number" id="minfall" value="1" step="0.1" min="0"></label>
-    <label>Vol. máximo del retest ③ (× media, 0 = sin límite)<input type="number" id="maxret" value="0" step="0.1" min="0"></label>
-    <label>Vol. mínimo del retest ③ (× media, 0 = sin límite)<input type="number" id="minret" value="0.8" step="0.1" min="0"></label>
-    <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="bear" checked> Exigir vela de retest bajista</label>
-    <h3>Filtros de contexto (si fallan, la señal pasa de VENDER a VIGILAR)</h3>
-    <label>No vender si el diario sube más de (%, 0 = off)<input type="number" id="daymax" value="0" step="0.5" min="0"></label>
-    <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="ema50"> Exigir precio bajo la EMA50 diaria</label>
-    <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="sesson" checked> Evitar horas de baja liquidez</label>
-    <label>Desde (hora local)<input type="number" id="sh0" value="0" min="0" max="23"></label>
-    <label>Hasta (hora local)<input type="number" id="sh1" value="7" min="0" max="24"></label>
-    <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="nowknd"> Evitar fines de semana</label>
-    <h3>Backtest</h3>
-    <label>Historial<select id="btn"><option value="1000">1000 velas</option><option value="2000" selected>2000 velas</option><option value="4000">4000 velas</option></select></label>
-    <label>Comisión ida+vuelta (%)<input type="number" id="fee" value="0.09" step="0.01" min="0"></label>
-    <label>Cerrar si no resuelve en (velas)<input type="number" id="hold" value="100" min="5"></label>
-  </div>
-</details>
-
+<div class="sub">① Supera la resistencia → ② cae por debajo → ③ vuelve a tocarla y es rechazada. Solo velas cerradas. VENDER A = pasa todos los filtros · VENDER B = falla uno · FILTRADA = falla dos o más.</div>
+<div class="bar"><button class="main" id="go">Escanear</button><button id="btgo">Backtest</button>
+<label><input type="checkbox" id="auto"> Auto 90 s</label><label><input type="checkbox" id="snd" checked> Sonido</label></div>
+<details><summary>Ajustes</summary><div class="grid">
+<label>Temporalidad<select id="tf"><option>5m</option><option selected>15m</option><option>1h</option><option>4h</option></select></label>
+<label>Perps (por volumen 24h)<select id="pairs"><option>20</option><option selected>30</option><option>40</option></select></label>
+<label>Toques mínimos resistencia<select id="touches"><option>1</option><option selected>2</option><option>3</option></select></label>
+<label>Pivote (velas a cada lado)<select id="pivot"><option>3</option><option selected>4</option><option>5</option><option>6</option></select></label>
+<label>Antigüedad máx. del retest (velas)<input type="number" id="age" value="4" min="1" max="10"></label>
+<label>Distancia máx. a resistencia (ATR)<input type="number" id="dist" value="1.5" step="0.1" min="0.3"></label>
+<label>Capital ($)<input type="number" id="cap" value="1000" min="1"></label>
+<label>Riesgo por operación (%)<input type="number" id="risk" value="1" step="0.1" min="0.1"></label>
+<label>Colchón del SL (× ATR)<input type="number" id="slbuf" value="0.5" step="0.1" min="0"></label>
+<label>Vol. mínimo caída ② (× media)<input type="number" id="minfall" value="1" step="0.1" min="0"></label>
+<label>Vol. máximo retest ③ (0 = sin límite)<input type="number" id="maxret" value="0" step="0.1" min="0"></label>
+<label>Vol. mínimo retest ③ (0 = sin límite)<input type="number" id="minret" value="0.8" step="0.1" min="0"></label>
+<label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="bear" checked> Exigir vela de retest bajista</label>
+<h3>Filtros de contexto (cada fallo baja la calidad: 1 fallo = B, 2 o más = FILTRADA)</h3>
+<label>Diario sube más de (%, 0 = off)<input type="number" id="daymax" value="0" step="0.5" min="0"></label>
+<label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="ema50"> Exigir precio bajo EMA50 diaria</label>
+<label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="sesson" checked> Evitar horas de baja liquidez</label>
+<label>Desde (hora local)<input type="number" id="sh0" value="0" min="0" max="23"></label>
+<label>Hasta (hora local)<input type="number" id="sh1" value="7" min="0" max="24"></label>
+<label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="nowknd"> Evitar fines de semana</label>
+<h3>Backtest</h3>
+<label>Historial<select id="btn"><option value="1000">1000 velas</option><option value="2000" selected>2000 velas</option><option value="4000">4000 velas</option><option value="4700">4700 velas (máx.)</option></select></label>
+<label>Comisión ida+vuelta (%)<input type="number" id="fee" value="0.09" step="0.01" min="0"></label>
+<label>Cerrar si no resuelve en (velas)<input type="number" id="hold" value="100" min="5"></label>
+</div></details>
 <div class="stats">
-  <div class="stat on" data-f="all"><b id="n-all">0</b><span>TODAS</span></div>
-  <div class="stat" data-f="sell"><b id="n-sell" style="color:var(--red)">0</b><span>VENDER</span></div>
-  <div class="stat" data-f="prep"><b id="n-prep" style="color:var(--amb)">0</b><span>PREPARANDO</span></div>
-  <div class="stat" data-f="break"><b id="n-break" style="color:var(--grn)">0</b><span>ROMPIÓ</span></div>
-</div>
-<div id="status">Pulsa Escanear.</div>
-<div id="btout"></div>
-<div id="list"></div>
-<div class="src">Velas: API pública de Hyperliquid (candleSnapshot). Gráfico dibujado en esta página. Hyperliquid no permite precargar la orden: copia los valores y pégalos allí.</div>
-
+<div class="stat on" data-f="all"><b id="n-all">0</b><span>TODAS</span></div>
+<div class="stat" data-f="sell"><b id="n-sell" style="color:var(--red)">0</b><span>VENDER</span></div>
+<div class="stat" data-f="filt"><b id="n-filt" style="color:var(--mut)">0</b><span>FILTRADA</span></div>
+<div class="stat" data-f="prep"><b id="n-prep" style="color:var(--amb)">0</b><span>PREPARANDO</span></div>
+<div class="stat" data-f="break"><b id="n-break" style="color:var(--grn)">0</b><span>ROMPIÓ</span></div></div>
+<div id="status">Pulsa Escanear.</div><div id="btout"></div><div id="list"></div>
+<div class="src">Velas: API pública de Hyperliquid (candleSnapshot). Hyperliquid no permite precargar la orden: copia los valores y pégalos allí.</div>
 <script>
-// ==== CORE START ====
-function atr(c,p=14){
-  const n=c.length; if(n<p+1) return null;
-  let s=0;
-  for(let i=n-p;i<n;i++){
-    s+=Math.max(c[i].h-c[i].l,Math.abs(c[i].h-c[i-1].c),Math.abs(c[i].l-c[i-1].c));
-  }
-  return s/p;
-}
-
-function ema(a,p){
-  if(a.length<p) return null;
-  const k=2/(p+1); let e=a.slice(0,p).reduce((s,v)=>s+v,0)/p;
-  for(let i=p;i<a.length;i++) e=a[i]*k+e*(1-k);
-  return e;
-}
-
-// Resistencias = máximos de pivote agrupados por cercanía
+function atr(c,p=14){const n=c.length;if(n<p+1)return null;let s=0;for(let i=n-p;i<n;i++)s+=Math.max(c[i].h-c[i].l,Math.abs(c[i].h-c[i-1].c),Math.abs(c[i].l-c[i-1].c));return s/p;}
+function ema(a,p){if(a.length<p)return null;const k=2/(p+1);let e=a.slice(0,p).reduce((s,v)=>s+v,0)/p;for(let i=p;i<a.length;i++)e=a[i]*k+e*(1-k);return e;}
 function findLevels(c,k,A){
   const piv=[];
-  for(let i=k;i<c.length-k;i++){
-    let ok=true;
-    for(let j=1;j<=k;j++){ if(!(c[i].h>c[i-j].h && c[i].h>=c[i+j].h)){ok=false;break;} }
-    if(ok) piv.push({i,p:c[i].h});
-  }
+  for(let i=k;i<c.length-k;i++){let ok=true;for(let j=1;j<=k;j++){if(!(c[i].h>c[i-j].h&&c[i].h>=c[i+j].h)){ok=false;break;}}if(ok)piv.push({i,p:c[i].h});}
   piv.sort((a,b)=>a.p-b.p);
-  const levels=[]; let cur=null;
-  for(const q of piv){
-    const tol=Math.max(0.5*A,q.p*0.0015);
-    if(cur && q.p-cur.first<=tol){cur.items.push(q);}
-    else{ cur={first:q.p,items:[q]}; levels.push(cur); }
-  }
-  return levels.map(g=>({
-    price:g.items.reduce((s,x)=>s+x.p,0)/g.items.length,
-    touches:g.items.length,
-    lastIdx:Math.max(...g.items.map(x=>x.i))
-  }));
+  const levels=[];let cur=null;
+  for(const q of piv){const tol=Math.max(0.5*A,q.p*0.0015);if(cur&&q.p-cur.first<=tol)cur.items.push(q);else{cur={first:q.p,items:[q]};levels.push(cur);}}
+  return levels.map(g=>({price:g.items.reduce((s,x)=>s+x.p,0)/g.items.length,touches:g.items.length,lastIdx:Math.max(...g.items.map(x=>x.i))}));
 }
-
-// Máquina de estados: 0 debajo · 1 por encima (ruptura) · 2 cayó por debajo · 3 retest rechazado
 function evalLevel(c,L,start,A,cfg){
-  const buf=Math.max(0.1*A,L*0.0005), touchTol=0.25*A;
+  const buf=Math.max(0.1*A,L*0.0005),touchTol=0.25*A;
   let st=0,bI=-1,fI=-1,rI=-1,bHigh=0,lowSince=Infinity;
-  for(let j=start;j<c.length;j++){
-    const x=c[j];
-    if(st===0){
-      if(x.c>L+buf){st=1;bI=j;bHigh=x.h;}
-    }else if(st===1){
-      bHigh=Math.max(bHigh,x.h);
-      if(x.c<L){st=2;fI=j;rI=-1;lowSince=x.l;}
-    }else{
-      lowSince=Math.min(lowSince,x.l);
+  for(let j=start;j<c.length;j++){const x=c[j];
+    if(st===0){if(x.c>L+buf){st=1;bI=j;bHigh=x.h;}}
+    else if(st===1){bHigh=Math.max(bHigh,x.h);if(x.c<L){st=2;fI=j;rI=-1;lowSince=x.l;}}
+    else{lowSince=Math.min(lowSince,x.l);
       if(x.c>L+buf){st=1;bI=j;bHigh=x.h;fI=-1;rI=-1;lowSince=Infinity;}
-      else if(j-fI>=2 && x.h>=L-touchTol && x.c<L && (L-lowSince)>=0.75*A && (!cfg.needBear||x.c<x.o)){
-        st=3;rI=j;
-      }
-    }
-  }
-  return {st,bI,fI,rI,bHigh};
+      else if(j-fI>=2&&x.h>=L-touchTol&&x.c<L&&(L-lowSince)>=0.75*A&&(!cfg.needBear||x.c<x.o)){st=3;rI=j;}}}
+  return{st,bI,fI,rI,bHigh};
 }
-
-// c = velas CERRADAS. Devuelve la mejor situación encontrada o null
+// Calidad: 0 fallos = VENDER A · 1 fallo = VENDER B · 2+ = FILTRADA
+function setGrade(r){const n=r.fails.length;r.grade=n===0?'A':n===1?'B':'';r.stage=n<=1?'sell':'filt';r.rank=n;}
 function analyze(c,cfg){
-  const A=atr(c); if(!A) return null;
-  const n=c.length-1, last=c[n];
-  const levels=findLevels(c,cfg.pivotK,A);
-  let best=null;
+  const A=atr(c);if(!A)return null;
+  const n=c.length-1,last=c[n],levels=findLevels(c,cfg.pivotK,A);let best=null;
   for(const lv of levels){
-    if(lv.touches<cfg.minTouches) continue;
-    const L=lv.price;
-    const r=evalLevel(c,L,lv.lastIdx+1,A,cfg);
-    if(!r.st) continue;
-    const dist=(L-last.c)/A; // >0 = precio por debajo de la resistencia
-    let stage=null;
-    if(r.st===3 && (n-r.rI)<cfg.maxAge && dist>0 && dist<=cfg.maxDist) stage='sell';
-    else if(r.st===2 && (n-r.fI)<=40 && dist>0 && dist<=3) stage='prep';
-    else if(r.st===1 && (n-r.bI)<=12 && (last.c-L)/A<=2 && last.c>L) stage='break';
-    if(!stage) continue;
-    const rank={sell:0,prep:1,break:2}[stage];
-    const age=stage==='sell'?n-r.rI:stage==='prep'?n-r.fI:n-r.bI;
+    if(lv.touches<cfg.minTouches)continue;
+    const L=lv.price,r=evalLevel(c,L,lv.lastIdx+1,A,cfg);if(!r.st)continue;
+    const dist=(L-last.c)/A;let stage=null;
+    if(r.st===3&&(n-r.rI)<cfg.maxAge&&dist>0&&dist<=cfg.maxDist)stage='sell';
+    else if(r.st===2&&(n-r.fI)<=40&&dist>0&&dist<=3)stage='prep';
+    else if(r.st===1&&(n-r.bI)<=12&&(last.c-L)/A<=2&&last.c>L)stage='break';
+    if(!stage)continue;
+    const rank={sell:0,prep:1,break:2}[stage],age=stage==='sell'?n-r.rI:stage==='prep'?n-r.fI:n-r.bI;
     const cand={stage,rank,level:L,touches:lv.touches,A,dist,age,bI:r.bI,fI:r.fI,rI:r.rI,close:last.c};
-    if(!best||rank<best.rank||(rank===best.rank&&(cand.touches>best.touches||(cand.touches===best.touches&&age<best.age)))) best=cand;
+    if(!best||rank<best.rank||(rank===best.rank&&(cand.touches>best.touches||(cand.touches===best.touches&&age<best.age))))best=cand;
   }
-  if(!best) return null;
+  if(!best)return null;
   if(best.stage==='sell'){
     const rHigh=Math.max(...c.slice(best.rI).map(x=>x.h));
-    const entry=last.c, sl=Math.max(rHigh,best.level)+cfg.slBuf*A, risk=sl-entry;
-    const riskUsd=cfg.capital*cfg.riskPct/100, qty=riskUsd/risk;
+    const entry=last.c,sl=Math.max(rHigh,best.level)+cfg.slBuf*A,risk=sl-entry;
+    const riskUsd=cfg.capital*cfg.riskPct/100,qty=riskUsd/risk;
     Object.assign(best,{entry,sl,slPct:risk/entry*100,tp1:entry-1.5*risk,tp2:entry-3*risk,qty,notional:qty*entry,riskUsd});
-    // Volumen relativo a la media de las 30 velas anteriores a la ruptura
-    const base=c.slice(Math.max(0,best.bI-30),best.bI).map(x=>x.v);
-    const avg=base.reduce((s,v)=>s+v,0)/(base.length||1);
+    const base=c.slice(Math.max(0,best.bI-30),best.bI).map(x=>x.v),avg=base.reduce((s,v)=>s+v,0)/(base.length||1);
     const rel=v=>avg>0?v/avg:null;
-    best.volBreak=rel(c[best.bI].v);
-    best.volFall=rel(Math.max(...c.slice(best.fI,best.rI).map(x=>x.v)));
-    best.volRetest=rel(c[best.rI].v);
-    let why='';
-    if(cfg.minFall>0&&best.volFall!=null&&best.volFall<cfg.minFall) why='la caída ② no tuvo volumen';
-    else if(cfg.maxRet>0&&best.volRetest!=null&&best.volRetest>cfg.maxRet) why='el retest ③ tuvo demasiado volumen';
-    else if(cfg.minRet>0&&best.volRetest!=null&&best.volRetest<cfg.minRet) why='el retest ③ tuvo poco volumen';
-    if(why){best.stage='prep';best.rank=1;best.weak=true;best.weakWhy=why;}
-  }
+    best.volBreak=rel(c[best.bI].v);best.volFall=rel(Math.max(...c.slice(best.fI,best.rI).map(x=>x.v)));best.volRetest=rel(c[best.rI].v);
+    const f=[];
+    if(cfg.minFall>0&&best.volFall!=null&&best.volFall<cfg.minFall)f.push('caída ② con poco volumen');
+    if(cfg.maxRet>0&&best.volRetest!=null&&best.volRetest>cfg.maxRet)f.push('retest ③ con demasiado volumen');
+    if(cfg.minRet>0&&best.volRetest!=null&&best.volRetest<cfg.minRet)f.push('retest ③ con poco volumen');
+    best.fails=f;setGrade(best);
+  }else best.rank=best.stage==='prep'?10:11;
   const m=Math.min(70,c.length);
-  best.candles=c.slice(-m); best.base=c.length-m;
-  best.bT=best.bI>=0?c[best.bI].t:null; best.fT=best.fI>=0?c[best.fI].t:null; best.rT=best.rI>=0?c[best.rI].t:null;
+  best.candles=c.slice(-m);best.base=c.length-m;
+  best.bT=best.bI>=0?c[best.bI].t:null;best.fT=best.fI>=0?c[best.fI].t:null;best.rT=best.rI>=0?c[best.rI].t:null;
   return best;
 }
-// ==== CORE END ====
 
 const $=id=>document.getElementById(id);
 const S={results:[],filter:'all',seen:new Set(),first:true,busy:false,lastScan:0,timer:null,syms:null,symsAt:0,meta:{},fail:0};
-const API='https://api.hyperliquid.xyz/info';
-const TFMS={'5m':3e5,'15m':9e5,'1h':36e5,'4h':144e5};
-const N_CANDLES=300;
-
-// ---- Ajustes guardados en el navegador ----
+const API='https://api.hyperliquid.xyz/info',TFMS={'5m':3e5,'15m':9e5,'1h':36e5,'4h':144e5},N_CANDLES=300;
 const SAVE_IDS=['tf','pairs','touches','pivot','age','dist','cap','risk','slbuf','minfall','maxret','bear','snd','daymax','ema50','sesson','sh0','sh1','nowknd','btn','fee','hold','minret'];
-function saveCfg(){try{const o={};SAVE_IDS.forEach(id=>{const e=$(id);o[id]=e.type==='checkbox'?e.checked:e.value;});localStorage.setItem('hl-ruptura-cfg2',JSON.stringify(o));}catch(e){}}
-function loadCfg(){try{const o=JSON.parse(localStorage.getItem('hl-ruptura-cfg2')||'{}');SAVE_IDS.forEach(id=>{if(!(id in o))return;const e=$(id);if(e.type==='checkbox')e.checked=!!o[id];else e.value=o[id];});}catch(e){}}
-loadCfg();
-SAVE_IDS.forEach(id=>$(id).addEventListener('change',saveCfg));
-
+function saveCfg(){try{const o={};SAVE_IDS.forEach(id=>{const e=$(id);o[id]=e.type==='checkbox'?e.checked:e.value;});localStorage.setItem('hl-ruptura-cfg3',JSON.stringify(o));}catch(e){}}
+function loadCfg(){try{const o=JSON.parse(localStorage.getItem('hl-ruptura-cfg3')||'{}');SAVE_IDS.forEach(id=>{if(!(id in o))return;const e=$(id);if(e.type==='checkbox')e.checked=!!o[id];else e.value=o[id];});}catch(e){}}
+loadCfg();SAVE_IDS.forEach(id=>$(id).addEventListener('change',saveCfg));
 function num(id,def){const v=parseFloat($(id).value);return isNaN(v)?def:v;}
 function readCfg(){return{tf:$('tf').value,pairs:+$('pairs').value,minTouches:+$('touches').value,pivotK:+$('pivot').value,
-  maxAge:+$('age').value||3,maxDist:+$('dist').value||1.5,needBear:$('bear').checked,capital:+$('cap').value||1000,riskPct:+$('risk').value||1,
+  maxAge:+$('age').value||4,maxDist:+$('dist').value||1.5,needBear:$('bear').checked,capital:+$('cap').value||1000,riskPct:+$('risk').value||1,
   slBuf:num('slbuf',0.5),minFall:+$('minfall').value||0,maxRet:+$('maxret').value||0,minRet:num('minret',0),
   dayMax:num('daymax',0),ema50:$('ema50').checked,sessOn:$('sesson').checked,sH0:num('sh0',0),sH1:num('sh1',7),noWknd:$('nowknd').checked};}
-
 async function post(body,retry=2){
   const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   if(r.status===429&&retry>0){await new Promise(z=>setTimeout(z,1500));return post(body,retry-1);}
-  if(!r.ok)throw new Error('HTTP '+r.status);
-  return r.json();
+  if(!r.ok)throw new Error('HTTP '+r.status);return r.json();
 }
-
 async function getSymbols(n){
   if(!S.syms||Date.now()-S.symsAt>600000){
     const [meta,ctx]=await post({type:'metaAndAssetCtxs'});
     const arr=meta.universe.map((u,i)=>({name:u.name,del:u.isDelisted,vol:+((ctx[i]&&ctx[i].dayNtlVlm)||0),sz:u.szDecimals}));
-    S.meta={}; arr.forEach(a=>{S.meta[a.name]=a;});
-    S.syms=arr.filter(a=>!a.del).sort((a,b)=>b.vol-a.vol).map(a=>a.name);
-    S.symsAt=Date.now();
+    S.meta={};arr.forEach(a=>{S.meta[a.name]=a;});
+    S.syms=arr.filter(a=>!a.del).sort((a,b)=>b.vol-a.vol).map(a=>a.name);S.symsAt=Date.now();
   }
   return S.syms.slice(0,n);
 }
-
-async function getKlines(coin,tf){
-  const now=Date.now();
+async function getKlines(coin,tf){const now=Date.now();
   const k=await post({type:'candleSnapshot',req:{coin,interval:tf,startTime:now-N_CANDLES*TFMS[tf],endTime:now}});
-  return k.filter(x=>x.T<=now).map(x=>({t:x.t,o:+x.o,h:+x.h,l:+x.l,c:+x.c,v:+x.v}));
-}
-
-// Velas diarias: la última es la de HOY (aún abierta)
-async function getDaily(coin){
-  const now=Date.now();
+  return k.filter(x=>x.T<=now).map(x=>({t:x.t,o:+x.o,h:+x.h,l:+x.l,c:+x.c,v:+x.v}));}
+async function getDaily(coin){const now=Date.now();
   const k=await post({type:'candleSnapshot',req:{coin,interval:'1d',startTime:now-120*864e5,endTime:now}});
-  return k.map(x=>({t:x.t,o:+x.o,c:+x.c}));
-}
+  return k.map(x=>({t:x.t,o:+x.o,c:+x.c}));}
 
-// Filtros de contexto: si falla alguno, VENDER pasa a VIGILAR
 async function applyFilters(r,s,cfg){
-  let why='';
-  if(cfg.sessOn&&r.rT!=null){
-    const d=new Date(r.rT),h=d.getHours(),dow=d.getDay();
+  const f=r.fails;
+  if(cfg.sessOn&&r.rT!=null){const d=new Date(r.rT),h=d.getHours(),dow=d.getDay();
     const inWin=cfg.sH1>cfg.sH0?(h>=cfg.sH0&&h<cfg.sH1):(h>=cfg.sH0||h<cfg.sH1);
-    if(inWin) why='horario de baja liquidez';
-    else if(cfg.noWknd&&(dow===0||dow===6)) why='fin de semana';
-  }
+    if(inWin)f.push('horario de baja liquidez');else if(cfg.noWknd&&(dow===0||dow===6))f.push('fin de semana');}
   if(cfg.dayMax>0||cfg.ema50){
-    try{
-      const dc=await getDaily(s);
-      if(dc.length>=2){
-        const today=dc[dc.length-1], chg=(today.c/today.o-1)*100;
-        r.dayChg=chg;
-        if(!why&&cfg.dayMax>0&&chg>=cfg.dayMax) why='el diario sube +'+chg.toFixed(1)+'%';
-        if(!why&&cfg.ema50){
-          const e=ema(dc.slice(0,-1).map(x=>x.c),50);
-          if(e!=null&&today.c>e) why='precio sobre la EMA50 diaria';
-        }
-      }
-    }catch(e){ if(!why) why='no se pudo leer el diario (reescanea)'; }
-  }
-  if(why){r.stage='prep';r.rank=1;r.weak=true;r.weakWhy=why;}
+    try{const dc=await getDaily(s);
+      if(dc.length>=2){const today=dc[dc.length-1],chg=(today.c/today.o-1)*100;r.dayChg=chg;
+        if(cfg.dayMax>0&&chg>=cfg.dayMax)f.push('el diario sube +'+chg.toFixed(1)+'%');
+        if(cfg.ema50){const e=ema(dc.slice(0,-1).map(x=>x.c),50);if(e!=null&&today.c>e)f.push('precio sobre la EMA50 diaria');}}
+    }catch(e){f.push('sin datos del diario (reescanea)');}}
+  setGrade(r);
 }
-
 async function scan(){
-  if(S.busy)return; S.busy=true; $('go').disabled=true;
-  const cfg=readCfg();
+  if(S.busy)return;S.busy=true;$('go').disabled=true;const cfg=readCfg();
   try{
     status('Cargando pares…');
-    const syms=await getSymbols(cfg.pairs), out=[], q=[...syms]; let done=0, fail=0;
-    const worker=async()=>{
-      while(q.length){
-        const s=q.shift();
-        try{const c=await getKlines(s,cfg.tf);const r=analyze(c,cfg);if(r){r.symbol=s;
-          if(r.stage==='sell'){const sz=S.meta[s]?S.meta[s].sz:4,f=Math.pow(10,sz);
-            r.sz=sz;r.qty=Math.floor(r.qty*f)/f;r.notional=r.qty*r.entry;r.riskUsd=r.qty*(r.sl-r.entry);
-            await applyFilters(r,s,cfg);}
+    const syms=await getSymbols(cfg.pairs),out=[],q=[...syms];let done=0,fail=0;
+    const worker=async()=>{while(q.length){const s=q.shift();
+      try{const c=await getKlines(s,cfg.tf),r=analyze(c,cfg);
+        if(r){r.symbol=s;
+          if(r.entry!=null){const sz=S.meta[s]?S.meta[s].sz:4,f=Math.pow(10,sz);
+            r.sz=sz;r.qty=Math.floor(r.qty*f)/f;r.notional=r.qty*r.entry;r.riskUsd=r.qty*(r.sl-r.entry);await applyFilters(r,s,cfg);}
           out.push(r);}}catch(e){fail++;}
-        done++; status(`Escaneando ${done}/${syms.length}…`);
-      }
-    };
+      done++;status(`Escaneando ${done}/${syms.length}…`);}};
     await Promise.all(Array.from({length:4},worker));
     out.sort((a,b)=>a.rank-b.rank||a.age-b.age);
-    let fresh=false;
-    out.forEach(r=>{ if(r.stage==='sell'){const k=r.symbol+cfg.tf+r.rI; if(!S.seen.has(k)){S.seen.add(k);fresh=true;}} });
-    if(fresh&&!S.first){ if($('snd').checked)beep(); try{navigator.vibrate&&navigator.vibrate(200);}catch(e){} }
-    S.first=false; S.results=out; S.tf=cfg.tf; S.lastScan=Date.now(); S.fail=fail;
-    render(); tick();
+    let freshA=false,freshB=false;
+    out.forEach(r=>{if(r.stage==='sell'){const k=r.symbol+cfg.tf+r.rI+r.grade;if(!S.seen.has(k)){S.seen.add(k);if(r.grade==='A')freshA=true;else freshB=true;}}});
+    if((freshA||freshB)&&!S.first){if($('snd').checked)beep(freshA?520:380);try{navigator.vibrate&&navigator.vibrate(freshA?[200]:[100,80,100]);}catch(e){}}
+    S.first=false;S.results=out;S.tf=cfg.tf;S.lastScan=Date.now();S.fail=fail;render();tick();
   }catch(e){status('Error: '+e.message);}
   finally{S.busy=false;$('go').disabled=false;}
 }
-
 function status(t){$('status').textContent=t;}
-function tick(){ if(S.lastScan&&!S.busy){const s=Math.round((Date.now()-S.lastScan)/1000);
-  status(`Último scan ${new Date(S.lastScan).toLocaleTimeString('es-ES')} · hace ${s}s · ${S.tf}`+(S.fail?` · ${S.fail} pares sin datos`:''));} }
+function tick(){if(S.lastScan&&!S.busy){const s=Math.round((Date.now()-S.lastScan)/1000);
+  status(`Último scan ${new Date(S.lastScan).toLocaleTimeString('es-ES')} · hace ${s}s · ${S.tf}`+(S.fail?` · ${S.fail} pares sin datos`:''));}}
 setInterval(tick,1000);
-
-function beep(){try{const a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();
-  o.connect(g);g.connect(a.destination);o.frequency.value=520;g.gain.value=0.2;o.start();o.stop(a.currentTime+0.35);}catch(e){}}
-
+function beep(fq){try{const a=new(window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();
+  o.connect(g);g.connect(a.destination);o.frequency.value=fq;g.gain.value=0.2;o.start();o.stop(a.currentTime+0.35);}catch(e){}}
 function fmt(p){return p>=100?p.toFixed(2):p>=1?p.toFixed(4):p>=0.1?p.toFixed(5):p.toFixed(7);}
 function tm(t){if(t==null)return '';const d=new Date(t);return d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});}
-
 function chart(r){
-  const W=360,H=190,M=56,PW=W-M,cs=r.candles,n=cs.length; if(!n)return '';
-  const sell=r.entry!=null;
-  let hi=r.level,lo=r.level; cs.forEach(x=>{hi=Math.max(hi,x.h);lo=Math.min(lo,x.l);});
-  if(sell){[r.sl,r.tp1].forEach(v=>{hi=Math.max(hi,v);lo=Math.min(lo,v);});}
-  const pad=(hi-lo)*0.05||hi*0.001; hi+=pad; lo-=pad;
-  const y=p=>14+(H-24)*(1-(p-lo)/(hi-lo)), st=PW/n, bw=Math.max(1.5,st*0.6);
+  const W=360,H=190,M=56,PW=W-M,cs=r.candles,n=cs.length;if(!n)return '';
+  const sell=r.entry!=null;let hi=r.level,lo=r.level;cs.forEach(x=>{hi=Math.max(hi,x.h);lo=Math.min(lo,x.l);});
+  if(sell)[r.sl,r.tp1].forEach(v=>{hi=Math.max(hi,v);lo=Math.min(lo,v);});
+  const pad=(hi-lo)*0.05||hi*0.001;hi+=pad;lo-=pad;
+  const y=p=>14+(H-24)*(1-(p-lo)/(hi-lo)),st=PW/n,bw=Math.max(1.5,st*0.6);
   let s=`<svg viewBox="0 0 ${W} ${H}" class="ch" role="img" aria-label="Velas de ${r.symbol}">`;
-  const ln=(p,col,dash)=>{ if(p<lo||p>hi)return '';
-    return `<line x1="0" x2="${PW}" y1="${y(p)}" y2="${y(p)}" stroke="${col}" stroke-width="1" stroke-dasharray="${dash}"/>`+
-           `<text x="${PW+3}" y="${y(p)+3}" class="pl" fill="${col}">${fmt(p)}</text>`; };
-  cs.forEach((x,i)=>{
-    const cx=i*st+st/2,col=x.c>=x.o?'#26a69a':'#ef5350',t=y(Math.max(x.o,x.c)),b=y(Math.min(x.o,x.c));
-    s+=`<line x1="${cx}" x2="${cx}" y1="${y(x.h)}" y2="${y(x.l)}" stroke="${col}"/>`;
-    s+=`<rect x="${cx-bw/2}" y="${t}" width="${bw}" height="${Math.max(1,b-t)}" fill="${col}"/>`;
-  });
+  const ln=(p,col,dash)=>{if(p<lo||p>hi)return '';return `<line x1="0" x2="${PW}" y1="${y(p)}" y2="${y(p)}" stroke="${col}" stroke-dasharray="${dash}"/><text x="${PW+3}" y="${y(p)+3}" class="pl" fill="${col}">${fmt(p)}</text>`;};
+  cs.forEach((x,i)=>{const cx=i*st+st/2,col=x.c>=x.o?'#26a69a':'#ef5350',t=y(Math.max(x.o,x.c)),b=y(Math.min(x.o,x.c));
+    s+=`<line x1="${cx}" x2="${cx}" y1="${y(x.h)}" y2="${y(x.l)}" stroke="${col}"/><rect x="${cx-bw/2}" y="${t}" width="${bw}" height="${Math.max(1,b-t)}" fill="${col}"/>`;});
   s+=ln(r.level,'#f0b429','4 3');
-  if(sell){ s+=ln(r.entry,'#e6edf3','2 3')+ln(r.sl,'#ef5350','5 3')+ln(r.tp1,'#26a69a','5 3')+ln(r.tp2,'#26a69a','1 3'); }
-  [['1',r.bI],['2',r.fI],['3',r.rI]].forEach(([l,i])=>{
-    const k=i-r.base; if(i>=0&&k>=0&&k<n){s+=`<text x="${k*st+st/2}" y="${Math.max(10,y(cs[k].h)-3)}" class="mk">${l}</text>`;}
-  });
+  if(sell)s+=ln(r.entry,'#e6edf3','2 3')+ln(r.sl,'#ef5350','5 3')+ln(r.tp1,'#26a69a','5 3')+ln(r.tp2,'#26a69a','1 3');
+  [['1',r.bI],['2',r.fI],['3',r.rI]].forEach(([l,i])=>{const k=i-r.base;if(i>=0&&k>=0&&k<n)s+=`<text x="${k*st+st/2}" y="${Math.max(10,y(cs[k].h)-3)}" class="mk">${l}</text>`;});
   s+='</svg>';
-  const lg=sell?'<div class="lg"><span style="color:#f0b429">Resistencia</span><span style="color:#e6edf3">Entrada</span><span style="color:#ef5350">SL</span><span style="color:#26a69a">TP1 / TP2</span></div>'
-               :'<div class="lg"><span style="color:#f0b429">Resistencia</span></div>';
-  return s+lg;
+  return s+(sell?'<div class="lg"><span style="color:#f0b429">Resistencia</span><span style="color:#e6edf3">Entrada</span><span style="color:#ef5350">SL</span><span style="color:#26a69a">TP1 / TP2</span></div>':'<div class="lg"><span style="color:#f0b429">Resistencia</span></div>');
 }
-
 function card(r){
-  const base=r.symbol, sell=r.stage==='sell', hasPlan=r.entry!=null;
-  const tag=r.weak?'VIGILAR · filtrada':{sell:'VENDER',prep:'PREPARANDO · espera retest',break:'ROMPIÓ ARRIBA · vigilar'}[r.stage];
+  const base=r.symbol,sell=r.stage==='sell',hasPlan=r.entry!=null;
+  const tag=sell?'VENDER · '+r.grade:{filt:'FILTRADA',prep:'PREPARANDO · espera retest',break:'ROMPIÓ ARRIBA · vigilar'}[r.stage];
   const vx=v=>v==null?'–':v.toFixed(1)+'x';
-  const vol=r.volRetest!=null?`<div class="m" style="margin-top:4px"><span>Vol ruptura <b>${vx(r.volBreak)}</b></span><span>caída <b>${vx(r.volFall)}</b></span><span>retest <b>${vx(r.volRetest)}</b></span>`+(r.dayChg!=null?`<span>Diario <b>${r.dayChg>=0?'+':''}${r.dayChg.toFixed(1)}%</b></span>`:'')+`</div>`+(r.weak?`<div class="m" style="margin-top:4px;color:var(--amb)">Descartada como VENDER: ${r.weakWhy}.</div>`:''):'';
+  const vol=r.volRetest!=null?`<div class="m" style="margin-top:4px"><span>Vol ruptura <b>${vx(r.volBreak)}</b></span><span>caída <b>${vx(r.volFall)}</b></span><span>retest <b>${vx(r.volRetest)}</b></span>`+(r.dayChg!=null?`<span>Diario <b>${r.dayChg>=0?'+':''}${r.dayChg.toFixed(1)}%</b></span>`:'')+`</div>`+(r.fails&&r.fails.length?`<div class="m" style="margin-top:4px;color:var(--amb)">${r.grade==='B'?'Calidad B, falla':'Filtrada, falla'}: ${r.fails.join(' · ')}.</div>`:''):'';
   const tl=[r.bT?`① Rompe ${tm(r.bT)}`:'',r.fT?`② Cae ${tm(r.fT)}`:'',r.rT?`③ Toca ${tm(r.rT)}`:''].filter(Boolean).map(x=>`<span>${x}</span>`).join('');
-  const plan=hasPlan?`<div class="plan">
-    <div><b>Entrada</b> ${fmt(r.entry)}</div>
-    <div><b>SL</b> ${fmt(r.sl)} <i>(+${r.slPct.toFixed(2)}%)</i></div>
-    <div><b>TP1 1.5R</b> ${fmt(r.tp1)}</div>
-    <div><b>TP2 3R</b> ${fmt(r.tp2)}</div>
-    <div><b>Tamaño</b> ${r.qty.toFixed(r.sz)} ${base} · ${r.notional.toFixed(0)} $</div>
-    <div><b>Riesgo</b> ${r.riskUsd.toFixed(2)} $</div></div>`:'';
-  const cp=(lbl,v)=>`<button class="cp" data-v="${v}">${lbl}</button>`;
-  const act=`<div class="act"><a class="hl" href="https://app.hyperliquid.xyz/trade/${encodeURIComponent(r.symbol)}" target="_blank" rel="noopener">Abrir en Hyperliquid</a>`+
-    (sell?cp('Copiar entrada',fmt(r.entry))+cp('Copiar SL',fmt(r.sl))+cp('Copiar TP1',fmt(r.tp1))+cp('Copiar TP2',fmt(r.tp2))+cp('Copiar tamaño',r.qty.toFixed(r.sz)):'')+`</div>`;
-  return `<div class="c ${r.stage}">
-    <div class="hd"><b>${base}-PERP</b><span class="tag">${tag}</span></div>
-    <div class="tl">${tl}</div>
-    <div class="m"><span>Resistencia <b>${fmt(r.level)}</b></span><span>Toques <b>${r.touches}</b></span>
-      <span>Precio <b>${fmt(r.close)}</b></span><span>Dist. <b>${Math.abs(r.dist).toFixed(2)} ATR</b></span>
-      <span>Hace <b>${r.age}</b> velas</span></div>${vol}
-    ${sell?plan+hist():''}${act}${chart(r)}</div>`;
+  const plan=hasPlan?`<div class="plan"><div><b>Entrada</b> ${fmt(r.entry)}</div><div><b>SL</b> ${fmt(r.sl)} <i>(+${r.slPct.toFixed(2)}%)</i></div><div><b>TP1 1.5R</b> ${fmt(r.tp1)}</div><div><b>TP2 3R</b> ${fmt(r.tp2)}</div><div><b>Tamaño</b> ${r.qty.toFixed(r.sz)} ${base} · ${r.notional.toFixed(0)} $</div><div><b>Riesgo</b> ${r.riskUsd.toFixed(2)} $</div></div>`:'';
+  const cp=(l,v)=>`<button class="cp" data-v="${v}">${l}</button>`;
+  const act=`<div class="act"><a class="hl" href="https://app.hyperliquid.xyz/trade/${encodeURIComponent(r.symbol)}" target="_blank" rel="noopener">Abrir en Hyperliquid</a>`+(hasPlan?cp('Copiar entrada',fmt(r.entry))+cp('Copiar SL',fmt(r.sl))+cp('Copiar TP1',fmt(r.tp1))+cp('Copiar TP2',fmt(r.tp2))+cp('Copiar tamaño',r.qty.toFixed(r.sz)):'')+`</div>`;
+  return `<div class="c ${r.stage}"><div class="hd"><b>${base}-PERP</b><span class="tag">${tag}</span></div><div class="tl">${tl}</div>
+<div class="m"><span>Resistencia <b>${fmt(r.level)}</b></span><span>Toques <b>${r.touches}</b></span><span>Precio <b>${fmt(r.close)}</b></span><span>Dist. <b>${Math.abs(r.dist).toFixed(2)} ATR</b></span><span>Hace <b>${r.age}</b> velas</span></div>${vol}${hasPlan?plan+hist():''}${act}${chart(r)}</div>`;
 }
-
 function render(){
-  const cnt={sell:0,prep:0,break:0}; S.results.forEach(r=>cnt[r.stage]++);
-  $('n-all').textContent=S.results.length; $('n-sell').textContent=cnt.sell; $('n-prep').textContent=cnt.prep; $('n-break').textContent=cnt.break;
+  const cnt={sell:0,filt:0,prep:0,break:0};S.results.forEach(r=>cnt[r.stage]++);
+  $('n-all').textContent=S.results.length;['sell','filt','prep','break'].forEach(k=>{$('n-'+k).textContent=cnt[k];});
   document.title=(cnt.sell?`(${cnt.sell}) `:'')+'Scanner HL · Ruptura';
   document.querySelectorAll('.stat').forEach(e=>e.classList.toggle('on',e.dataset.f===S.filter));
   const rows=S.results.filter(r=>S.filter==='all'||r.stage===S.filter);
   $('list').innerHTML=rows.length?rows.map(card).join(''):'<div class="empty">Sin setups ahora mismo en este filtro.</div>';
 }
-
 function copyText(t){
   if(navigator.clipboard&&window.isSecureContext)return navigator.clipboard.writeText(t);
-  return new Promise((ok,ko)=>{const a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';
-    document.body.appendChild(a);a.select();try{document.execCommand('copy')?ok():ko();}catch(e){ko(e);}a.remove();});
+  return new Promise((ok,ko)=>{const a=document.createElement('textarea');a.value=t;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();try{document.execCommand('copy')?ok():ko();}catch(e){ko(e);}a.remove();});
 }
-$('list').addEventListener('click',e=>{
-  const b=e.target.closest('button.cp'); if(!b)return;
-  const old=b.textContent;
-  copyText(b.dataset.v).then(()=>{b.classList.add('ok');b.textContent='Copiado '+b.dataset.v;})
-    .catch(()=>{b.textContent='No se pudo copiar';})
-    .finally(()=>setTimeout(()=>{b.classList.remove('ok');b.textContent=old;},1500));
-});
-
+$('list').addEventListener('click',e=>{const b=e.target.closest('button.cp');if(!b)return;const old=b.textContent;
+  copyText(b.dataset.v).then(()=>{b.classList.add('ok');b.textContent='Copiado '+b.dataset.v;}).catch(()=>{b.textContent='No se pudo copiar';}).finally(()=>setTimeout(()=>{b.classList.remove('ok');b.textContent=old;},1500));});
 document.querySelectorAll('.stat').forEach(e=>e.onclick=()=>{S.filter=e.dataset.f;render();});
 
 // ================= BACKTEST =================
 const yieldUI=()=>new Promise(r=>setTimeout(r,0));
 try{S.bt=JSON.parse(localStorage.getItem('hl-bt-last')||'null');}catch(e){S.bt=null;}
-function hist(){
-  const b=S.bt; if(!b||b.tf!==S.tf||!b.n)return '';
-  const f=v=>(v>=0?'+':'')+v.toFixed(2);
-  return `<div class="m" style="margin-top:6px"><span>Histórico con tus filtros (${b.n} señales, ${b.days} días): <b class="${b.eB>0?'pos':'neg'}">${f(b.eB)}R</b> por operación a TP2 · llegan a TP2 <b>${b.wB.toFixed(0)}%</b></span></div>`;
-}
-
+function hist(){const b=S.bt;if(!b||b.tf!==S.tf||!b.n)return '';const f=v=>(v>=0?'+':'')+v.toFixed(2);
+  return `<div class="m" style="margin-top:6px"><span>Histórico con tus filtros (${b.n} señales, ${b.days} días): <b class="${b.eB>0?'pos':'neg'}">${f(b.eB)}R</b> por operación a TP2 · llegan a TP2 <b>${b.wB.toFixed(0)}%</b></span></div>`;}
 async function btSymbol(s,cfg,base,N,hold,fee){
-  const now=Date.now(), tfms=TFMS[cfg.tf];
+  const now=Date.now(),tfms=TFMS[cfg.tf];
   const k=await post({type:'candleSnapshot',req:{coin:s,interval:cfg.tf,startTime:now-(N+300)*tfms,endTime:now}});
   const c=k.filter(x=>x.T<=now).map(x=>({t:x.t,o:+x.o,h:+x.h,l:+x.l,c:+x.c,v:+x.v}));
   const days=Math.min(400,Math.ceil(N*tfms/864e5)+120);
   const dk=await post({type:'candleSnapshot',req:{coin:s,interval:'1d',startTime:now-days*864e5,endTime:now}});
-  const dm={}; let sum=0,e=null; const kk=2/51;
-  dk.forEach((x,i)=>{ const o=+x.o,cl=+x.c; dm[x.t]={o,ema:e};
-    if(i<50){sum+=cl; if(i===49)e=sum/50;} else e=cl*kk+e*(1-kk); });
-  const out=[], seen=new Set(); let busy=-1;
+  const dm={};let sum=0,e=null;const kk=2/51;
+  dk.forEach((x,i)=>{const o=+x.o,cl=+x.c;dm[x.t]={o,ema:e};if(i<50){sum+=cl;if(i===49)e=sum/50;}else e=cl*kk+e*(1-kk);});
+  const out=[],seen=new Set();let busy=-1;
   for(let i=299;i<c.length-1;i++){
-    if(i%150===0) await yieldUI();
-    if(i<=busy) continue;
-    const r=analyze(c.slice(i-299,i+1),base);
-    if(!r||r.stage!=='sell') continue;
-    const rAbs=i-299+r.rI; if(seen.has(rAbs)) continue; seen.add(rAbs);
-    const entry=r.entry, sl=r.sl, tp1=r.tp1, tp2=r.tp2, risk=sl-entry;
-    const end=Math.min(i+hold,c.length-1);
+    if(i%150===0)await yieldUI();if(i<=busy)continue;
+    const r=analyze(c.slice(i-299,i+1),base);if(!r||r.stage!=='sell')continue;
+    const rAbs=i-299+r.rI;if(seen.has(rAbs))continue;seen.add(rAbs);
+    const entry=r.entry,sl=r.sl,tp1=r.tp1,tp2=r.tp2,risk=sl-entry,end=Math.min(i+hold,c.length-1);
     let sI=-1,t1=-1,t2=-1;
-    for(let j=i+1;j<=end;j++){
-      const x=c[j];
-      if(sI<0&&x.h>=sl)sI=j; if(t1<0&&x.l<=tp1)t1=j; if(t2<0&&x.l<=tp2)t2=j;
-      if((sI>=0||t1>=0)&&(sI>=0||t2>=0))break;
-    }
-    const res=(hit,R)=>{ if(sI>=0&&(hit<0||sI<=hit))return{r:-1,at:sI}; if(hit>=0)return{r:R,at:hit}; return null; };
-    let a=res(t1,1.5), b=res(t2,3);
-    if(!a||!b){
-      if(end<i+hold) continue; // sin datos suficientes: operación aún abierta
-      const tmo=(entry-c[end].c)/risk;
-      a=a||{r:tmo,at:end}; b=b||{r:tmo,at:end};
-    }
+    for(let j=i+1;j<=end;j++){const x=c[j];if(sI<0&&x.h>=sl)sI=j;if(t1<0&&x.l<=tp1)t1=j;if(t2<0&&x.l<=tp2)t2=j;if((sI>=0||t1>=0)&&(sI>=0||t2>=0))break;}
+    const res=(hit,R)=>{if(sI>=0&&(hit<0||sI<=hit))return{r:-1,at:sI};if(hit>=0)return{r:R,at:hit};return null;};
+    let a=res(t1,1.5),b=res(t2,3);
+    if(!a||!b){if(end<i+hold)continue;const tmo=(entry-c[end].c)/risk;a=a||{r:tmo,at:end};b=b||{r:tmo,at:end};}
     busy=Math.max(a.at,b.at);
-    const feeR=fee/(risk/entry*100);
-    const day=dm[Math.floor(c[i].t/864e5)*864e5];
-    const d=new Date(r.rT);
+    const feeR=fee/(risk/entry*100),day=dm[Math.floor(c[i].t/864e5)*864e5],d=new Date(r.rT);
     out.push({s,t:c[i].t,rA:a.r-feeR,rB:b.r-feeR,volFall:r.volFall,volRetest:r.volRetest,touches:r.touches,
-      dayChg:day?(entry/day.o-1)*100:null, above:(day&&day.ema!=null)?entry>day.ema:null, hour:d.getHours(), dow:d.getDay()});
+      dayChg:day?(entry/day.o-1)*100:null,above:(day&&day.ema!=null)?entry>day.ema:null,hour:d.getHours(),dow:d.getDay()});
   }
   return out;
 }
-
 function btPass(g,cfg){
   if(cfg.minFall>0&&g.volFall!=null&&g.volFall<cfg.minFall)return false;
   if(cfg.maxRet>0&&g.volRetest!=null&&g.volRetest>cfg.maxRet)return false;
   if(cfg.minRet>0&&g.volRetest!=null&&g.volRetest<cfg.minRet)return false;
   if(cfg.dayMax>0&&g.dayChg!=null&&g.dayChg>=cfg.dayMax)return false;
   if(cfg.ema50&&g.above===true)return false;
-  if(cfg.sessOn){
-    const h=g.hour, inWin=cfg.sH1>cfg.sH0?(h>=cfg.sH0&&h<cfg.sH1):(h>=cfg.sH0||h<cfg.sH1);
-    if(inWin)return false;
-    if(cfg.noWknd&&(g.dow===0||g.dow===6))return false;
-  }
+  if(cfg.sessOn){const h=g.hour,inWin=cfg.sH1>cfg.sH0?(h>=cfg.sH0&&h<cfg.sH1):(h>=cfg.sH0||h<cfg.sH1);if(inWin)return false;if(cfg.noWknd&&(g.dow===0||g.dow===6))return false;}
   return true;
 }
-
-function btStats(a){
-  const n=a.length; if(!n)return{n:0};
-  const sA=a.reduce((x,g)=>x+g.rA,0), sB=a.reduce((x,g)=>x+g.rB,0);
-  return{n,wA:a.filter(g=>g.rA>0).length/n*100,eA:sA/n,wB:a.filter(g=>g.rB>0).length/n*100,eB:sB/n,tA:sA,tB:sB};
-}
-
-function btRow(label,a){
-  const t=btStats(a); if(!t.n)return `<tr><td>${label}</td><td>0</td><td colspan="5">–</td></tr>`;
-  const c=v=>v>0?'pos':v<0?'neg':'';
-  const f=v=>(v>=0?'+':'')+v.toFixed(2);
-  return `<tr><td>${label}</td><td>${t.n}</td><td>${t.wA.toFixed(0)}%</td><td class="${c(t.eA)}">${f(t.eA)}</td><td>${t.wB.toFixed(0)}%</td><td class="${c(t.eB)}">${f(t.eB)}</td><td class="${c(t.tA)}">${f(t.tA)}</td></tr>`;
-}
+function btStats(a){const n=a.length;if(!n)return{n:0};const sA=a.reduce((x,g)=>x+g.rA,0),sB=a.reduce((x,g)=>x+g.rB,0);
+  return{n,wA:a.filter(g=>g.rA>0).length/n*100,eA:sA/n,wB:a.filter(g=>g.rB>0).length/n*100,eB:sB/n,tA:sA,tB:sB};}
+const cl=v=>v>0?'pos':v<0?'neg':'',fx=v=>(v>=0?'+':'')+v.toFixed(2);
+function btRow(label,a){const t=btStats(a);if(!t.n)return `<tr><td>${label}</td><td>0</td><td colspan="4">–</td></tr>`;
+  return `<tr><td>${label}</td><td>${t.n}</td><td class="${cl(t.eA)}">${fx(t.eA)}</td><td>${t.wB.toFixed(0)}%</td><td class="${cl(t.eB)}">${fx(t.eB)}</td><td class="${cl(t.tB)}">${fx(t.tB)}</td></tr>`;}
+function cmpRow(label,a,late){const t=btStats(a),l=btStats(a.filter(late));if(!t.n)return `<tr><td>${label}</td><td>0</td><td colspan="4">–</td></tr>`;
+  return `<tr><td>${label}</td><td>${t.n}</td><td>${t.wB.toFixed(0)}%</td><td class="${cl(t.eB)}">${fx(t.eB)}</td><td class="${cl(t.tB)}">${fx(t.tB)}</td><td class="${l.n?cl(l.eB):''}">${l.n?fx(l.eB)+' ('+l.n+')':'–'}</td></tr>`;}
 
 function renderBT(sigs,cfg,N,fail){
-  const pass=sigs.filter(g=>btPass(g,cfg)), rej=sigs.filter(g=>!btPass(g,cfg));
-  const seg=(title,items)=>`<tr class="sec"><td colspan="7">${title}</td></tr>`+items.map(([l,fn])=>btRow(l,sigs.filter(fn))).join('');
-  let h=`<div class="c"><div class="hd"><b>Backtest · ${cfg.tf} · ${Math.round(N*TFMS[cfg.tf]/864e5)} días · ${cfg.pairs} pares</b></div>`;
-  const t=btStats(pass), f2=v=>(v>=0?'+':'')+v.toFixed(2), days=Math.round(N*TFMS[cfg.tf]/864e5);
+  const pass=sigs.filter(g=>btPass(g,cfg)),rej=sigs.filter(g=>!btPass(g,cfg)),days=Math.round(N*TFMS[cfg.tf]/864e5);
+  const ts=sigs.map(g=>g.t).sort((a,b)=>a-b),cut=ts[Math.floor(ts.length*2/3)]||0,late=g=>g.t>=cut,early=g=>g.t<cut;
+  const seg=(title,items)=>`<tr class="sec"><td colspan="6">${title}</td></tr>`+items.map(([l,fn])=>btRow(l,sigs.filter(fn))).join('');
+  const t=btStats(pass),tl=btStats(pass.filter(late)),te=btStats(pass.filter(early));
   let vd,vc;
   if(t.n<30){vd=`Solo ${t.n} señales con tus filtros: son pocas para decidir. Prueba con más historial.`;vc='var(--amb)';}
-  else if(t.eB>0.1&&t.eA>=0){vd=`Con tus filtros ha ganado dinero en estos ${days} días: ${f2(t.eB)}R por operación si dejas correr hasta TP2. Buena señal, pero repítelo con más historial antes de fiarte.`;vc='var(--grn)';}
-  else if(t.eB>0){vd=`Gana muy poco (${f2(t.eB)}R por operación a TP2). Las comisiones o un mal fill pueden borrarlo.`;vc='var(--amb)';}
-  else{vd=`Con tus filtros ha perdido dinero (${f2(t.eB)}R por operación a TP2). No la operes con dinero real.`;vc='var(--red)';}
-  h+=`<div class="m" style="margin-top:8px;color:${vc};font-size:13px"><b>${vd}</b></div><div class="note">Un backtest es probar la estrategia con el pasado: cuenta cuántas veces habría saltado una señal y si habría llegado antes al objetivo o al stop. "R" es tu riesgo: +1R = ganas lo que arriesgabas.</div>`;
-  if(t.n){S.bt={tf:cfg.tf,n:t.n,wA:t.wA,eA:t.eA,wB:t.wB,eB:t.eB,days};try{localStorage.setItem('hl-bt-last',JSON.stringify(S.bt));}catch(e){}}
-  h+=`<div class="wrap"><table class="tbl"><tr><th></th><th>Nº</th><th>Gana TP1</th><th>Esp. R TP1</th><th>Gana TP2</th><th>Esp. R TP2</th><th>Total R TP1</th></tr>`;
-  h+=btRow('Todas (sin filtros de contexto)',sigs)+btRow('Con tus filtros actuales',pass)+btRow('Rechazadas por filtros',rej);
+  else if(t.eB>0.1&&t.eA>=0){vd=`Con tus filtros ha ganado dinero en estos ${days} días: ${fx(t.eB)}R por operación (${fx(t.tB)}R en total) si dejas correr hasta TP2.`;vc='var(--grn)';}
+  else if(t.eB>0){vd=`Gana muy poco (${fx(t.eB)}R por operación a TP2). Las comisiones o un mal fill pueden borrarlo.`;vc='var(--amb)';}
+  else{vd=`Con tus filtros ha perdido dinero (${fx(t.eB)}R por operación a TP2). No la operes con dinero real.`;vc='var(--red)';}
+  let h=`<div class="c"><div class="hd"><b>Backtest · ${cfg.tf} · ${days} días · ${cfg.pairs} pares</b></div><div class="m" style="margin-top:8px;color:${vc};font-size:13px"><b>${vd}</b></div>`;
+  if(te.n&&tl.n){const ok=tl.eB>0;h+=`<div class="m" style="margin-top:6px;font-size:13px"><span>Validación: primeros 2/3 <b class="${cl(te.eB)}">${fx(te.eB)}R</b> (${te.n}) · último 1/3 <b class="${cl(tl.eB)}">${fx(tl.eB)}R</b> (${tl.n}) → ${ok?'el último tramo también gana: buena señal':'el último tramo no gana: ojo, puede ser sobreajuste'}.</span></div>`;}
+  if(t.n)S.bt={tf:cfg.tf,n:t.n,wA:t.wA,eA:t.eA,wB:t.wB,eB:t.eB,days};try{localStorage.setItem('hl-bt-last',JSON.stringify(S.bt));}catch(e){}
+  h+=`<div class="note">R = tu riesgo: +1R = ganas lo que arriesgabas. Ojo: el R medio sube con filtros, pero el R total puede bajar si descartan operaciones que ganaban.</div>`;
+  h+=`<div class="wrap"><table class="tbl"><tr><th></th><th>Nº</th><th>R/op TP1</th><th>Gana TP2</th><th>R/op TP2</th><th>R total TP2</th></tr>`;
+  h+=btRow('Todas (sin filtros)',sigs)+btRow('Con tus filtros',pass)+btRow('Rechazadas',rej);
   h+=seg('Volumen del retest ③',[['menos de 0.8x',g=>g.volRetest!=null&&g.volRetest<0.8],['0.8x a 1.5x',g=>g.volRetest!=null&&g.volRetest>=0.8&&g.volRetest<=1.5],['más de 1.5x',g=>g.volRetest!=null&&g.volRetest>1.5]]);
   h+=seg('Volumen de la caída ②',[['menos de 1x',g=>g.volFall!=null&&g.volFall<1],['1x o más',g=>g.volFall!=null&&g.volFall>=1]]);
   h+=seg('Diario en el momento',[['sube 3% o más',g=>g.dayChg!=null&&g.dayChg>=3],['menos de +3%',g=>g.dayChg!=null&&g.dayChg<3]]);
   h+=seg('EMA50 diaria',[['precio sobre la EMA50',g=>g.above===true],['precio bajo la EMA50',g=>g.above===false]]);
   h+=seg('Horario (local)',[['00:00-07:59',g=>g.hour<8],['08:00-23:59',g=>g.hour>=8],['fin de semana',g=>g.dow===0||g.dow===6]]);
   h+=seg('Toques de la resistencia',[['2 toques',g=>g.touches===2],['3 o más',g=>g.touches>=3]]);
-  h+=`</table></div><div class="note">Esp. R = ganancia media por operación en múltiplos del riesgo (positivo = gana dinero tras comisiones). TP1 = cierras todo en 1.5R; TP2 = en 3R. Entrada al cierre de la vela de señal; si SL y TP caen en la misma vela cuenta como SL; si no resuelve en ${$('hold').value} velas se cierra a mercado. Comisión ${$('fee').value}% ida+vuelta. Las señales de varios pares coinciden en el tiempo (el mercado se mueve a la vez), así que cuenta más el total que cada par.${fail?` ${fail} pares sin datos.`:''}</div></div>`;
-  $('btout').innerHTML=h; render();
+  h+=`</table></div><div class="hd" style="margin-top:14px"><b>Comparador de filtros</b></div><div class="wrap"><table class="tbl"><tr><th></th><th>Nº</th><th>Gana TP2</th><th>R/op</th><th>R total</th><th>R/op último 1/3</th></tr>`;
+  const r8=g=>g.volRetest!=null&&g.volRetest>=0.8,f1=g=>g.volFall!=null&&g.volFall>=1,nh=g=>g.hour>=8,d3=g=>g.dayChg!=null&&g.dayChg>=3;
+  [['Sin filtros',()=>true],['Tus filtros actuales',g=>btPass(g,cfg)],['Retest ≥0.8x',r8],['Caída ≥1x',f1],['Retest ≥0.8x + caída ≥1x',g=>r8(g)&&f1(g)],['Sin horario 00-08',nh],['Retest ≥0.8x + sin 00-08',g=>r8(g)&&nh(g)],['Diario ≥3%',d3],['Retest ≥0.8x + diario ≥3%',g=>r8(g)&&d3(g)]].forEach(([l,fn])=>{h+=cmpRow(l,sigs.filter(fn),late);});
+  h+=`</table></div><div class="note">Elige filtros mirando R total y que el último 1/3 también sea positivo, no solo el R por operación. Entrada al cierre de la vela de señal; si SL y TP caen en la misma vela cuenta como SL; si no resuelve en ${$('hold').value} velas se cierra a mercado. Comisión ${$('fee').value}% ida+vuelta. Las señales de varios pares coinciden en el tiempo, así que cuenta más el total que cada par.${fail?` ${fail} pares sin datos.`:''}</div></div>`;
+  $('btout').innerHTML=h;render();
 }
-
 async function backtest(){
-  if(S.busy)return; S.busy=true; $('go').disabled=true; $('btgo').disabled=true; $('btout').innerHTML='';
-  const cfg=readCfg(), N=+$('btn').value||2000, fee=num('fee',0.09), hold=Math.max(5,Math.floor(num('hold',100)));
-  const base=Object.assign({},cfg,{minFall:0,maxRet:0,minRet:0});
-  const sigs=[]; let done=0, fail=0;
-  try{
-    const syms=await getSymbols(cfg.pairs), q=[...syms];
-    const worker=async()=>{
-      while(q.length){
-        const s=q.shift();
-        try{sigs.push(...await btSymbol(s,cfg,base,N,hold,fee));}catch(e){fail++;}
-        done++; status(`Backtest ${done}/${syms.length} · ${sigs.length} señales…`);
-      }
-    };
-    await Promise.all(Array.from({length:3},worker));
-    renderBT(sigs,cfg,N,fail); status(`Backtest terminado · ${sigs.length} señales analizadas`);
+  if(S.busy)return;S.busy=true;$('go').disabled=true;$('btgo').disabled=true;$('btout').innerHTML='';
+  const cfg=readCfg(),N=+$('btn').value||2000,fee=num('fee',0.09),hold=Math.max(5,Math.floor(num('hold',100)));
+  const base=Object.assign({},cfg,{minFall:0,maxRet:0,minRet:0}),sigs=[];let done=0,fail=0;
+  try{const syms=await getSymbols(cfg.pairs),q=[...syms];
+    const worker=async()=>{while(q.length){const s=q.shift();try{sigs.push(...await btSymbol(s,cfg,base,N,hold,fee));}catch(e){fail++;}done++;status(`Backtest ${done}/${syms.length} · ${sigs.length} señales…`);}};
+    await Promise.all(Array.from({length:3},worker));renderBT(sigs,cfg,N,fail);status(`Backtest terminado · ${sigs.length} señales analizadas`);
   }catch(e){status('Error: '+e.message);}
   finally{S.busy=false;$('go').disabled=false;$('btgo').disabled=false;}
 }
-$('btgo').onclick=backtest;
-
-$('go').onclick=scan;
-$('auto').onchange=e=>{clearInterval(S.timer); if(e.target.checked){scan();S.timer=setInterval(scan,90000);}};
-</script>
-</body>
-</html>
+$('btgo').onclick=backtest;$('go').onclick=scan;
+$('auto').onchange=e=>{clearInterval(S.timer);if(e.target.checked){scan();S.timer=setInterval(scan,90000);}};
+</script></body></html>
