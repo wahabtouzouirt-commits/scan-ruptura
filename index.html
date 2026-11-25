@@ -41,7 +41,7 @@ details{background:var(--card);border:1px solid var(--bd);border-radius:10px;pad
 .pos{color:var(--grn)}.neg{color:var(--red)}.wrap{overflow-x:auto}.note{color:var(--mut);font-size:11px;margin-top:8px}
 </style></head><body>
 <h1>Ruptura falsa + retest · CORTO en Hyperliquid</h1>
-<div class="sub">① Supera la resistencia → ② cae por debajo → ③ vuelve a tocarla y es rechazada. Solo velas cerradas. VENDER A = pasa todos los filtros · VENDER B = falla uno · FILTRADA = falla dos o más.</div>
+<div class="sub">① Supera la resistencia → ② cae por debajo → ③ vuelve a tocarla y es rechazada. Solo velas cerradas. VENDER = pasa todos los filtros · FILTRADA = falla alguno.</div>
 <div class="bar"><button class="main" id="go">Escanear</button><button id="btgo">Backtest</button>
 <label><input type="checkbox" id="auto"> Auto 90 s</label><label><input type="checkbox" id="snd" checked> Sonido</label></div>
 <details><summary>Ajustes</summary><div class="grid">
@@ -54,11 +54,11 @@ details{background:var(--card);border:1px solid var(--bd);border-radius:10px;pad
 <label>Capital ($)<input type="number" id="cap" value="1000" min="1"></label>
 <label>Riesgo por operación (%)<input type="number" id="risk" value="1" step="0.1" min="0.1"></label>
 <label>Colchón del SL (× ATR)<input type="number" id="slbuf" value="0.5" step="0.1" min="0"></label>
-<label>Vol. mínimo caída ② (× media)<input type="number" id="minfall" value="1" step="0.1" min="0"></label>
+<label>Vol. mínimo caída ② (× media)<input type="number" id="minfall" value="0" step="0.1" min="0"></label>
 <label>Vol. máximo retest ③ (0 = sin límite)<input type="number" id="maxret" value="0" step="0.1" min="0"></label>
 <label>Vol. mínimo retest ③ (0 = sin límite)<input type="number" id="minret" value="0.8" step="0.1" min="0"></label>
 <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="bear" checked> Exigir vela de retest bajista</label>
-<h3>Filtros de contexto (cada fallo baja la calidad: 1 fallo = B, 2 o más = FILTRADA)</h3>
+<h3>Filtros de contexto (si falla alguno, la señal pasa a FILTRADA)</h3>
 <label>Diario sube más de (%, 0 = off)<input type="number" id="daymax" value="0" step="0.5" min="0"></label>
 <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="ema50"> Exigir precio bajo EMA50 diaria</label>
 <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="sesson" checked> Evitar horas de baja liquidez</label>
@@ -101,7 +101,7 @@ function evalLevel(c,L,start,A,cfg){
   return{st,bI,fI,rI,bHigh};
 }
 // Calidad: 0 fallos = VENDER A · 1 fallo = VENDER B · 2+ = FILTRADA
-function setGrade(r){const n=r.fails.length;r.grade=n===0?'A':n===1?'B':'';r.stage=n<=1?'sell':'filt';r.rank=n;}
+function setGrade(r){const n=r.fails.length;r.grade=n===0?'A':'';r.stage=n===0?'sell':'filt';r.rank=n;}
 function analyze(c,cfg){
   const A=atr(c);if(!A)return null;
   const n=c.length-1,last=c[n],levels=findLevels(c,cfg.pivotK,A);let best=null;
@@ -142,8 +142,8 @@ const $=id=>document.getElementById(id);
 const S={results:[],filter:'all',seen:new Set(),first:true,busy:false,lastScan:0,timer:null,syms:null,symsAt:0,meta:{},fail:0};
 const API='https://api.hyperliquid.xyz/info',TFMS={'5m':3e5,'15m':9e5,'1h':36e5,'4h':144e5},N_CANDLES=300;
 const SAVE_IDS=['tf','pairs','touches','pivot','age','dist','cap','risk','slbuf','minfall','maxret','bear','snd','daymax','ema50','sesson','sh0','sh1','nowknd','btn','fee','hold','minret'];
-function saveCfg(){try{const o={};SAVE_IDS.forEach(id=>{const e=$(id);o[id]=e.type==='checkbox'?e.checked:e.value;});localStorage.setItem('hl-ruptura-cfg3',JSON.stringify(o));}catch(e){}}
-function loadCfg(){try{const o=JSON.parse(localStorage.getItem('hl-ruptura-cfg3')||'{}');SAVE_IDS.forEach(id=>{if(!(id in o))return;const e=$(id);if(e.type==='checkbox')e.checked=!!o[id];else e.value=o[id];});}catch(e){}}
+function saveCfg(){try{const o={};SAVE_IDS.forEach(id=>{const e=$(id);o[id]=e.type==='checkbox'?e.checked:e.value;});o.v4=1;localStorage.setItem('hl-ruptura-cfg3',JSON.stringify(o));}catch(e){}}
+function loadCfg(){try{const o=JSON.parse(localStorage.getItem('hl-ruptura-cfg3')||'{}');if(!o.v4)o.minfall='0';SAVE_IDS.forEach(id=>{if(!(id in o))return;const e=$(id);if(e.type==='checkbox')e.checked=!!o[id];else e.value=o[id];});}catch(e){}}
 loadCfg();SAVE_IDS.forEach(id=>$(id).addEventListener('change',saveCfg));
 function num(id,def){const v=parseFloat($(id).value);return isNaN(v)?def:v;}
 function readCfg(){return{tf:$('tf').value,pairs:+$('pairs').value,minTouches:+$('touches').value,pivotK:+$('pivot').value,
@@ -231,9 +231,9 @@ function chart(r){
 }
 function card(r){
   const base=r.symbol,sell=r.stage==='sell',hasPlan=r.entry!=null;
-  const tag=sell?'VENDER · '+r.grade:{filt:'FILTRADA',prep:'PREPARANDO · espera retest',break:'ROMPIÓ ARRIBA · vigilar'}[r.stage];
+  const tag=sell?'VENDER':{filt:'FILTRADA',prep:'PREPARANDO · espera retest',break:'ROMPIÓ ARRIBA · vigilar'}[r.stage];
   const vx=v=>v==null?'–':v.toFixed(1)+'x';
-  const vol=r.volRetest!=null?`<div class="m" style="margin-top:4px"><span>Vol ruptura <b>${vx(r.volBreak)}</b></span><span>caída <b>${vx(r.volFall)}</b></span><span>retest <b>${vx(r.volRetest)}</b></span>`+(r.dayChg!=null?`<span>Diario <b>${r.dayChg>=0?'+':''}${r.dayChg.toFixed(1)}%</b></span>`:'')+`</div>`+(r.fails&&r.fails.length?`<div class="m" style="margin-top:4px;color:var(--amb)">${r.grade==='B'?'Calidad B, falla':'Filtrada, falla'}: ${r.fails.join(' · ')}.</div>`:''):'';
+  const vol=r.volRetest!=null?`<div class="m" style="margin-top:4px"><span>Vol ruptura <b>${vx(r.volBreak)}</b></span><span>caída <b>${vx(r.volFall)}</b></span><span>retest <b>${vx(r.volRetest)}</b></span>`+(r.dayChg!=null?`<span>Diario <b>${r.dayChg>=0?'+':''}${r.dayChg.toFixed(1)}%</b></span>`:'')+`</div>`+(r.fails&&r.fails.length?`<div class="m" style="margin-top:4px;color:var(--amb)">${'Filtrada, falla'}: ${r.fails.join(' · ')}.</div>`:''):'';
   const tl=[r.bT?`① Rompe ${tm(r.bT)}`:'',r.fT?`② Cae ${tm(r.fT)}`:'',r.rT?`③ Toca ${tm(r.rT)}`:''].filter(Boolean).map(x=>`<span>${x}</span>`).join('');
   const plan=hasPlan?`<div class="plan"><div><b>Entrada</b> ${fmt(r.entry)}</div><div><b>SL</b> ${fmt(r.sl)} <i>(+${r.slPct.toFixed(2)}%)</i></div><div><b>TP1 1.5R</b> ${fmt(r.tp1)}</div><div><b>TP2 3R</b> ${fmt(r.tp2)}</div><div><b>Tamaño</b> ${r.qty.toFixed(r.sz)} ${base} · ${r.notional.toFixed(0)} $</div><div><b>Riesgo</b> ${r.riskUsd.toFixed(2)} $</div></div>`:'';
   const cp=(l,v)=>`<button class="cp" data-v="${v}">${l}</button>`;
